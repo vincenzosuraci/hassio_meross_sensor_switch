@@ -10,9 +10,9 @@ from custom_components.meross import (DOMAIN as MEROSS_DOMAIN, MEROSS_HTTP_CLIEN
 SCAN_INTERVAL = timedelta(seconds=10)
 
 MEROSS_SENSORS_MAP = {
-    'power'                 : { 'eid' : 'power',   'uom' : 'W',  'icon' : 'mdi:flash-outline', 'factor' : 0.001, 'decimals':3 },
-    'current'               : { 'eid' : 'current', 'uom' : 'A',  'icon' : 'mdi:current-ac',    'factor' : 0.001, 'decimals':3 },
-    'voltage'               : { 'eid' : 'voltage', 'uom' : 'V',  'icon' : 'mdi:power-plug',    'factor' : 0.1,   'decimals':1 },
+    'power'                 : { 'eid' : 'power',   'uom' : 'W',  'icon' : 'mdi:flash-outline', 'factor' : 0.001, 'decimals':2 },
+    'current'               : { 'eid' : 'current', 'uom' : 'A',  'icon' : 'mdi:current-ac',    'factor' : 0.001, 'decimals':2 },
+    'voltage'               : { 'eid' : 'voltage', 'uom' : 'V',  'icon' : 'mdi:power-plug',    'factor' : 0.1,   'decimals':2 },
 }
 
 l = logging.getLogger("meross_sensor")
