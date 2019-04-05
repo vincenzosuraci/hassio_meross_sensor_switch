@@ -22,7 +22,7 @@ Configuration
 
 - **For mss310 and mss210 v2.0.0 devices, change some lines of codes in the merioss_iot component**
 ```
-replace the "power_plug-py" file with the one provided in my library.
+replace the "power_plug.py" file with the one provided in my library.
 In a RPi/hassio installation, it is located in "\config\deps\lib\python3.7\site-packages\meross_iot\supported_devices" folder
 ```
 
