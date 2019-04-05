@@ -18,7 +18,8 @@ from paho.mqtt import MQTTException
 from meross_iot.utilities.synchronization import AtomicCounter
 
 l = logging.getLogger("meross_powerplug")
-l.addHandler(StreamHandler(stream=sys.stdout))
+#commented to avoid flooding in "home-assistant.log" file...
+#l.addHandler(StreamHandler(stream=sys.stdout))
 l.setLevel(logging.ERROR)
 
 class ClientStatus(Enum):
@@ -327,7 +328,10 @@ class Device:
 
     def get_status(self):
         if self._status is None:
+            # TODO: check the hardware version
+            # This is for v2.0.0
             self._status = self.get_sys_data()['all']['digest']['togglex'][0]['onoff'] == 1
+            # This is for v1.0.0 >>> commented
             #self._status = self.get_sys_data()['all']['control']['toggle']['onoff'] == 1
         return self._status
 
@@ -356,6 +360,7 @@ class Mss310(Device):
         return self._execute_cmd("GET", "Appliance.Control.Electricity", {})
 
     def turn_on(self):
+        # Needed to set the status
         self._status = True
         if self._hwversion.split(".")[0] == "2":
             payload = {'togglex': {"onoff": 1}}
@@ -365,6 +370,7 @@ class Mss310(Device):
             return self._execute_cmd("SET", "Appliance.Control.Toggle", payload)
 
     def turn_off(self):
+        # Needed to set the status
         self._status = False
         if self._hwversion.split(".")[0] == "2":
             payload = {'togglex': {"onoff": 0}}
