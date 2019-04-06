@@ -14,7 +14,7 @@ from homeassistant.helpers.event import track_time_interval
 l = logging.getLogger("meross_init")
 l.setLevel(logging.DEBUG)
 
-REQUIREMENTS = ['meross_iot==0.1.4.3']
+REQUIREMENTS = ['meross_iot==0.2.0.0']
 
 DOMAIN = 'meross'
 MEROSS_HTTP_CLIENT = 'meross_http_client'
@@ -165,12 +165,10 @@ class MerossDevice(Entity):
                 if update_device is True:
                     device = self.hass.data[MEROSS_DEVICES][meross_device_id]
                     if self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] is None:
-                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] = {}
-                    """ Attention: here python transforms the variable now in a tuple..."""
+                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] = {}                    
                     self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['last_scan'] = now
                     self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'] = device.get_status()
-                    get_electricity = getattr(device, "get_electricity", None)
-                    if callable(get_electricity):
+                    if 'Appliance.Control.Electricity' in device.get_abilities():
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['sensor'] = device.get_electricity()['electricity']
             self.hass.data[DOMAIN]['scanning'] = False
         None

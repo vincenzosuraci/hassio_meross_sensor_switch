@@ -26,8 +26,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     for meross_device_id in meross_device_ids:
         if meross_devices[meross_device_id] is not None:
             meross_device = meross_devices[meross_device_id]
-            get_electricity = getattr(meross_device, "get_electricity", None)
-            if callable(get_electricity):
+            if 'Appliance.Control.Electricity' in meross_device.get_abilities():
                 for sensor in MEROSS_SENSORS_MAP.keys():
                     entity = MerossSensor(hass, sensor, meross_device.device_id())
                     entities.append(entity)
