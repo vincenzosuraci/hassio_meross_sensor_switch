@@ -50,10 +50,11 @@ class MerossSensor(MerossDevice):
     def state(self):
        """Return the state of the sensor."""
        value = 0
-       if self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id] is not None:
+       status = self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]
+       if 'sensor' is status
            d = MEROSS_SENSORS_MAP[self.sensor]['decimals']
            f = MEROSS_SENSORS_MAP[self.sensor]['factor']
-           value = self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]['sensor'][self.sensor]*f
+           value = status['sensor'][self.sensor]*f
        formatted_value = '{:.{d}f}'.format(value,d = MEROSS_SENSORS_MAP[self.sensor]['decimals'])
        return formatted_value
 

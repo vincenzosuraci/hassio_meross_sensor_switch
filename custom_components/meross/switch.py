@@ -32,8 +32,10 @@ class MerossSwitch(MerossDevice, SwitchDevice):
     @property
     def is_on(self):
         """Return true if switch is on."""
-        if self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id] is not None:
-            return self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]['switch']
+        status = self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]
+        if status is not None:
+            if 'switch' in status:
+                return status['switch']
         return False
 
     def turn_on(self, **kwargs):
