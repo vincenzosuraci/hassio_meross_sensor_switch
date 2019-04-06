@@ -20,19 +20,13 @@ copy "custom_components" folder into your "/config" folder.
 Configuration
 ============
 
-- **For mss310 and mss210 v2.0.0 devices, change some lines of codes in the merioss_iot component**
-```
-replace the "power_plug.py" file with the one provided in my library.
-In a RPi/hassio installation, it is located in "\config\deps\lib\python3.7\site-packages\meross_iot\supported_devices" folder
-```
-
 - **Add your credentials to configuration.yaml**
 ```
 meross:
   username: !secret meross_userame
   password: !secret meross_password
 
-# I added these lines to prevent some frequent log status messages I noticed
+# Add these lines to prevent frequent log from meross_iot library
 logger:
   logs:
     meross_powerplug: warning
