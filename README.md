@@ -15,20 +15,17 @@ Currently, the Smart WiFi Surge Protectors (e.g. MSS425E) are not supported.
 Install
 ============
 
-- **Copy all the files (except README.md) into /config/custom_components/meross directory**
-```
-copy all the files, but README.md, into your "/config/custom_components/meross" folder. 
+- **Copy all the files, but README.md, into your "/config/custom_components/meross" folder.**
 Your configuration should look like:
-
+```
 config
   custom_components
     meross
       __init__.py
       sensor.py
       switch.py
- 
-The meross_iot framework will be downloaded automatically)
 ```
+The meross_iot framework will be downloaded automatically.
 
 Configuration
 ============
