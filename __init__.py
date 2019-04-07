@@ -163,13 +163,17 @@ class MerossDevice(Entity):
                     if now >= next_scan:
                         update_device = True
                 if update_device is True:
-                    device = self.hass.data[MEROSS_DEVICES][meross_device_id]
+                    meross_device = self.hass.data[MEROSS_DEVICES][meross_device_id]
+                    channels = len(meross_device.get_channels());
                     if self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] is None:
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] = {}                    
                     self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['last_scan'] = now
-                    self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'] = device.get_status()
-                    if 'Appliance.Control.Electricity' in device.get_abilities():
-                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['sensor'] = device.get_electricity()['electricity']
+                    if 'switch' not in self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]:
+                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'] = {}
+                    for channel in range(0, channels):
+                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'][channel] = meross_device.get_channel_status(channel)
+                    if meross_device.supports_electricity_reading():
+                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['sensor'] = meross_device.get_electricity()['electricity']
             self.hass.data[DOMAIN]['scanning'] = False
         None
 

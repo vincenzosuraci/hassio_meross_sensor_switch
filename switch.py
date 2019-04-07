@@ -18,17 +18,24 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     entities = []
     for meross_device_id in meross_device_ids:
         if meross_devices[meross_device_id] is not None:
-            entities.append(MerossSwitch(hass, meross_device_id))
+            meross_device = meross_devices[meross_device_id]
+            channels = len(meross_device.get_channels());
+            for channel in range(0, channels):
+                entities.append(MerossSwitch(hass, meross_device_id, channel))
     add_entities(entities)
 
 class MerossSwitch(MerossDevice, SwitchDevice):
     """meross Switch Device."""
 
-    def __init__(self, hass, meross_device_id):
+    def __init__(self, hass, meross_device_id, channel):
         """Init Meross switch device."""
-        switch_id = "{}_{}".format(MEROSS_DOMAIN, meross_device_id)
+        if channel == 0:
+            switch_id = "{}_{}".format(MEROSS_DOMAIN, meross_device_id)
+        else:
+            switch_id = "{}_{}_{}".format(MEROSS_DOMAIN, meross_device_id, str(channel))
         super().__init__(hass, meross_device_id, ENTITY_ID_FORMAT, switch_id)
         self.value = False
+        self.channel = channel
 
     @property
     def is_on(self):
@@ -36,7 +43,8 @@ class MerossSwitch(MerossDevice, SwitchDevice):
         status = self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]
         if status is not None:
             if 'switch' in status:
-                self.value = status['switch']
+                if self.channel in status['switch']:
+                    self.value = status['switch'][self.channel]
         return self.value
 
     def turn_on(self, **kwargs):
