@@ -28,6 +28,7 @@ class MerossSwitch(MerossDevice, SwitchDevice):
         """Init Meross switch device."""
         switch_id = "{}_{}".format(MEROSS_DOMAIN, meross_device_id)
         super().__init__(hass, meross_device_id, ENTITY_ID_FORMAT, switch_id)
+        self.value = False
 
     @property
     def is_on(self):
@@ -35,21 +36,19 @@ class MerossSwitch(MerossDevice, SwitchDevice):
         status = self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]
         if status is not None:
             if 'switch' in status:
-                return status['switch']
-        return False
+                self.value = status['switch']
+        return self.value
 
     def turn_on(self, **kwargs):
         """Turn the switch on."""
         device = self.device()
         if device is not None:
             device.turn_on()
-            if self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id] is not None:
-                self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]['switch'] = True
+            self.value = True
 
     def turn_off(self, **kwargs):
         """Turn the device off."""
         device = self.device()
         if device is not None:
             device.turn_off()
-            if self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id] is not None:
-                self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]['switch'] = False
+            self.value = False
