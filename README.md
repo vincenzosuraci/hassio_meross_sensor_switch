@@ -15,7 +15,7 @@ However, refer to [Alberto Geniola](https://github.com/albertogeniola/MerossIot)
 Install
 ============
 
-- **Copy all the file (except README.md) into /config/custom_components/meross directory**
+- **Copy all the files (except README.md) into /config/custom_components/meross directory**
 ```
 copy all the files but README.md into your "/config/custom_components/meross" folder.
 - create the /custom_components/meross directories, if needed 
