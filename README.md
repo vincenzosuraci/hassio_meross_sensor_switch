@@ -16,7 +16,7 @@ Install
 ============
 
 - **Copy all the files, but README.md, into your "/config/custom_components/meross" folder.**
-Your configuration should look like:
+- Your configuration should look like:
 ```
 config
   custom_components
@@ -25,7 +25,7 @@ config
       sensor.py
       switch.py
 ```
-The meross_iot framework will be downloaded automatically.
+- The meross_iot framework will be downloaded automatically.
 
 Configuration
 ============
@@ -35,9 +35,4 @@ Configuration
 meross:
   username: !secret meross_userame
   password: !secret meross_password
-
-# Add these lines to prevent frequent log from meross_iot library
-logger:
-  logs:
-    meross_powerplug: warning
 
