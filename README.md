@@ -15,10 +15,11 @@ However, refer to [Alberto Geniola](https://github.com/albertogeniola/MerossIot)
 Install
 ============
 
-- **Copy custom_components folder into your config directory**
+- **Copy custom_components folder into your /config directory**
 ```
-copy "custom_components" folder into your "/config" folder.
-(the meross_iot framework will be downloaded automatically)
+copy all the files but README.md into your "/config/custom_components/meross" folder.
+- create the /custom_components/meross directories, if needed 
+- the meross_iot framework will be downloaded automatically)
 ```
 
 Configuration
