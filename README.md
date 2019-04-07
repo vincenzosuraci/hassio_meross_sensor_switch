@@ -1,6 +1,7 @@
 # hassio_meross_sensor_switch
-A Home Assistant custom-component for Meross devices, based 
+- A Home Assistant custom-component for Meross devices, based 
 on the work done by [Alberto Geniola](https://github.com/albertogeniola/MerossIot) and [Chris Hurst](https://github.com/hurstc/hassio-meross)
+- This custom-component add the switch and sensor capabilities of your Meross device in Home Assistant
 
 Devices
 ============
