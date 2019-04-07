@@ -25,7 +25,7 @@ config
     meross
       __init__.py
       sensor.py
-      swotch.py
+      switch.py
  
 The meross_iot framework will be downloaded automatically)
 ```
