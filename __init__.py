@@ -146,7 +146,7 @@ class MerossDevice(Entity):
 
     def update(self):
         """ Trying to update only when necessary """
-        """ This function is called by threads """
+        """ This function can be called concurrenty by different threads """
         """ Only one device at time can be queried, otherwise it hangs """
         scanning = self.hass.data[DOMAIN].get('scanning')
         if scanning is False:
@@ -170,7 +170,7 @@ class MerossDevice(Entity):
                     self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['last_scan'] = now
                     if 'switch' not in self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]:
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'] = {}
-                    for channel in range(0, channels):
+                    for channel in range(0, (channels-1)):
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'][channel] = meross_device.get_channel_status(channel)
                     if meross_device.supports_electricity_reading():
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['sensor'] = meross_device.get_electricity()['electricity']

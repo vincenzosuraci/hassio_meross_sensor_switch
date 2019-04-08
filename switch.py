@@ -20,7 +20,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         if meross_devices[meross_device_id] is not None:
             meross_device = meross_devices[meross_device_id]
             channels = len(meross_device.get_channels());
-            for channel in range(0, channels):
+            for channel in range(0, (channels-1)):
                 entities.append(MerossSwitch(hass, meross_device_id, channel))
     add_entities(entities)
 
