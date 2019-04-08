@@ -1,6 +1,7 @@
 # hassio_meross_sensor_switch
-A Home Assistant custom-component for Meross devices, based 
+- A Home Assistant custom-component for Meross devices, based 
 on the work done by [Alberto Geniola](https://github.com/albertogeniola/MerossIot) and [Chris Hurst](https://github.com/hurstc/hassio-meross)
+- This custom-component adds the switch and sensor capabilities of your Meross device in Home Assistant
 
 Devices
 ============
@@ -15,20 +16,17 @@ Currently, the Smart WiFi Surge Protectors (e.g. MSS425E) are not supported.
 Install
 ============
 
-- **Copy all the files (except README.md) into /config/custom_components/meross directory**
+- **Copy all the files, but README.md, into your "/config/custom_components/meross" folder.**
+- Your configuration should look like:
 ```
-copy all the files, but README.md, into your "/config/custom_components/meross" folder. 
-Your configuration should look like:
-
 config
   custom_components
     meross
       __init__.py
       sensor.py
       switch.py
- 
-The meross_iot framework will be downloaded automatically)
 ```
+- The meross_iot framework will be downloaded automatically.
 
 Configuration
 ============
@@ -38,9 +36,4 @@ Configuration
 meross:
   username: !secret meross_userame
   password: !secret meross_password
-
-# Add these lines to prevent frequent log from meross_iot library
-logger:
-  logs:
-    meross_powerplug: warning
 
