@@ -150,8 +150,8 @@ class MerossDevice(Entity):
         """ Only one device at time can be queried, otherwise it hangs """
         scanning = self.hass.data[DOMAIN].get('scanning')
         if scanning is False:
-            now = datetime.now()
             self.hass.data[DOMAIN]['scanning'] = True
+            now = datetime.now()
             scan_interval = self.hass.data[DOMAIN].get('scan_interval')
             for meross_device_id in self.hass.data[DOMAIN]['last_scan_by_device_id'].keys():
                 update_device = False
@@ -170,7 +170,7 @@ class MerossDevice(Entity):
                     self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['last_scan'] = now
                     if 'switch' not in self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]:
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'] = {}
-                    for channel in range(0, (channels-1)):
+                    for channel in range(0, channels):
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'][channel] = meross_device.get_channel_status(channel)
                     channel = meross_device.get_usb_channel_index()
                     if channel is not None:
