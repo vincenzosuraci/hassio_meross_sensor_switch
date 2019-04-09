@@ -19,20 +19,27 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     for meross_device_id in meross_device_ids:
         if meross_devices[meross_device_id] is not None:
             meross_device = meross_devices[meross_device_id]
-            channels = len(meross_device.get_channels());
+            """ Some Meross devices return 0 channels... """
+            channels = max(1, len(meross_device.get_channels()))
             for channel in range(0, (channels-1)):
-                entities.append(MerossSwitch(hass, meross_device_id, channel))
+                suffix = ''
+                if channel > 0:
+                    suffix = '_'+str(channel)
+                entities.append(MerossSwitch(hass, meross_device_id, channel, suffix))
+            """ Some devices also have a dedicated channel for USB """
+            channel = meross_device.get_usb_channel_index()
+            if channel is not None:
+                suffix = '_usb'
+                entities.append(MerossSwitch(hass, meross_device_id, channel, suffix))
+
     add_entities(entities)
 
 class MerossSwitch(MerossDevice, SwitchDevice):
     """meross Switch Device."""
 
-    def __init__(self, hass, meross_device_id, channel):
+    def __init__(self, hass, meross_device_id, channel, suffix):
         """Init Meross switch device."""
-        if channel == 0:
-            switch_id = "{}_{}".format(MEROSS_DOMAIN, meross_device_id)
-        else:
-            switch_id = "{}_{}_{}".format(MEROSS_DOMAIN, meross_device_id, str(channel))
+        switch_id = "{}_{}{}".format(MEROSS_DOMAIN, meross_device_id, suffix)
         super().__init__(hass, meross_device_id, ENTITY_ID_FORMAT, switch_id)
         self.value = False
         self.channel = channel
@@ -51,12 +58,12 @@ class MerossSwitch(MerossDevice, SwitchDevice):
         """Turn the switch on."""
         device = self.device()
         if device is not None:
-            device.turn_on()
+            device.device.turn_on_channel(self.channel)
             self.value = True
 
     def turn_off(self, **kwargs):
         """Turn the device off."""
         device = self.device()
         if device is not None:
-            device.turn_off()
+            device.device.turn_off_channel(self.channel)
             self.value = False

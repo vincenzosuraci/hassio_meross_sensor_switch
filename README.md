@@ -32,8 +32,12 @@ Configuration
 ============
 
 - **Add your credentials to configuration.yaml**
+- username and password are mandatory
+- scan_interval is optional. It must be a positive integer number. It represents the seconds between two consecutive scans.
+Consider that decreasing its value, means that the home assistant custom component will query the Meross cloud service more frequently to gather the status of all the connected devices. Consider that the time required to obtain a response from the Meross cloud can vary from few seconds to decades of seconds, especially if you have many Meross connected devices. The default value is 30 seconds. 
 ```
 meross:
   username: !secret meross_userame
   password: !secret meross_password
+  scan_interval: 30
 

@@ -164,13 +164,16 @@ class MerossDevice(Entity):
                         update_device = True
                 if update_device is True:
                     meross_device = self.hass.data[MEROSS_DEVICES][meross_device_id]
-                    channels = len(meross_device.get_channels());
+                    channels = max(1, len(meross_device.get_channels()))
                     if self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] is None:
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] = {}                    
                     self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['last_scan'] = now
                     if 'switch' not in self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]:
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'] = {}
                     for channel in range(0, (channels-1)):
+                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'][channel] = meross_device.get_channel_status(channel)
+                    channel = meross_device.get_usb_channel_index()
+                    if channel is not None:
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'][channel] = meross_device.get_channel_status(channel)
                     if meross_device.supports_electricity_reading():
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['sensor'] = meross_device.get_electricity()['electricity']
