@@ -57,12 +57,12 @@ class MerossSwitch(MerossDevice, SwitchDevice):
         """Turn the switch on."""
         device = self.device()
         if device is not None:
-            device.device.turn_on_channel(self.channel)
+            device.turn_on_channel(self.channel)
             self.value = True
 
     def turn_off(self, **kwargs):
         """Turn the device off."""
         device = self.device()
         if device is not None:
-            device.device.turn_off_channel(self.channel)
+            device.turn_off_channel(self.channel)
             self.value = False
