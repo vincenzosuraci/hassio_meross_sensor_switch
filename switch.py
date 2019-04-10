@@ -54,15 +54,27 @@ class MerossSwitch(MerossDevice, SwitchDevice):
         return self.value
 
     def turn_on(self, **kwargs):
-        """Turn the switch on."""
+        """Turn the switch on"""
         device = self.device()
         if device is not None:
             device.turn_on_channel(self.channel)
+            """Force to update the status until the next scan"""
             self.value = True
+            status = self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]
+            if status is not None:
+                if 'switch' in status:
+                    if self.channel in status['switch']:
+                        self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]['switch'][self.channel] = self.value
 
     def turn_off(self, **kwargs):
-        """Turn the device off."""
+        """Turn the device off"""
         device = self.device()
         if device is not None:
             device.turn_off_channel(self.channel)
+            """Force to update the status until the next scan"""
             self.value = False
+            status = self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]
+            if status is not None:
+                if 'switch' in status:
+                    if self.channel in status['switch']:
+                        self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]['switch'][self.channel] = self.value
