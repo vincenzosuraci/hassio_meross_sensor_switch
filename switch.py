@@ -19,6 +19,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     for meross_device_id in meross_device_ids:
         if meross_devices[meross_device_id] is not None:
             meross_device = meross_devices[meross_device_id]
+            meross_device_info = str(meross_device)
             """ Some devices also have a dedicated channel for USB """
             usb_channel = meross_device.get_usb_channel_index()
             """ Some Meross devices return 0 channels... """
@@ -30,18 +31,19 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 if usb_channel is not None:
                     if usb_channel == channel:
                         suffix = '_usb'
-                entities.append(MerossSwitch(hass, meross_device_id, channel, suffix))
+                entities.append(MerossSwitch(hass, meross_device_id, meross_device_info, channel, suffix))
     add_entities(entities)
 
 class MerossSwitch(MerossDevice, SwitchDevice):
     """meross Switch Device."""
 
-    def __init__(self, hass, meross_device_id, channel, suffix):
+    def __init__(self, hass, meross_device_id, meross_device_info, channel, suffix):
         """Init Meross switch device."""
         switch_id = "{}_{}{}".format(MEROSS_DOMAIN, meross_device_id, suffix)
         super().__init__(hass, meross_device_id, ENTITY_ID_FORMAT, switch_id)
         self.value = False
         self.channel = channel
+        self.meross_device_info = meross_device_info
 
     @property
     def is_on(self):
@@ -51,6 +53,7 @@ class MerossSwitch(MerossDevice, SwitchDevice):
             if 'switch' in status:
                 if self.channel in status['switch']:
                     self.value = status['switch'][self.channel]
+                    #l.debug('Switch ' + self.meross_device_info + ' state updated (' + str(self.value) + ')')
         return self.value
 
     def turn_on(self, **kwargs):
