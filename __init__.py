@@ -156,14 +156,18 @@ class MerossDevice(Entity):
             for meross_device_id in self.hass.data[DOMAIN]['last_scan_by_device_id'].keys():
                 update_device = False
                 if self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] is None:
+                    l.debug('Entity ' + self.entity_id + ', self.hass.data[DOMAIN][\'last_scan_by_device_id\'][meross_device_id] is None >>> update needed!')
                     update_device = True
                 else:
                     last_scan = self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['last_scan']
                     next_scan = last_scan + scan_interval
+                    l.debug('Entity ' + self.entity_id + ', last scan: ' + str(last_scan) + ', next scan: ' + str(next_scan) + ', now: ' + str(now))
                     if now >= next_scan:
+                        l.debug('Entity ' + self.entity_id + ', now >= next_scan >>> update needed!')
                         update_device = True
                 if update_device is True:
                     meross_device = self.hass.data[MEROSS_DEVICES][meross_device_id]
+                    l.debug('Entity ' + self.entity_id + ' >>> updating device id '+meross_device_id)
                     channels = max(1, len(meross_device.get_channels()))
                     if self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] is None:
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] = {}                    
