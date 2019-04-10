@@ -19,17 +19,17 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
     for meross_device_id in meross_device_ids:
         if meross_devices[meross_device_id] is not None:
             meross_device = meross_devices[meross_device_id]
+            """ Some devices also have a dedicated channel for USB """
+            usb_channel = meross_device.get_usb_channel_index()
             """ Some Meross devices return 0 channels... """
             channels = max(1, len(meross_device.get_channels()))
             for channel in range(0, channels):
                 suffix = ''
                 if channel > 0:
                     suffix = '_'+str(channel)
-                entities.append(MerossSwitch(hass, meross_device_id, channel, suffix))
-            """ Some devices also have a dedicated channel for USB """
-            channel = meross_device.get_usb_channel_index()
-            if channel is not None:
-                suffix = '_usb'
+                if usb_channel is not None:
+                    if usb_channel == channel:
+                        suffix = '_usb'
                 entities.append(MerossSwitch(hass, meross_device_id, channel, suffix))
     add_entities(entities)
 

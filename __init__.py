@@ -172,9 +172,6 @@ class MerossDevice(Entity):
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'] = {}
                     for channel in range(0, channels):
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'][channel] = meross_device.get_channel_status(channel)
-                    channel = meross_device.get_usb_channel_index()
-                    if channel is not None:
-                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'][channel] = meross_device.get_channel_status(channel)
                     if meross_device.supports_electricity_reading():
                         self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['sensor'] = meross_device.get_electricity()['electricity']
             self.hass.data[DOMAIN]['scanning'] = False
