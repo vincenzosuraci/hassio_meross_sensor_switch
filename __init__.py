@@ -1,14 +1,16 @@
-from datetime import datetime, timedelta
+from datetime import timedelta
 import logging
 import voluptuous as vol
 
 from homeassistant.core import callback
 import homeassistant.helpers.config_validation as cv
-from homeassistant.const import (CONF_USERNAME, CONF_PASSWORD, CONF_PLATFORM, CONF_SCAN_INTERVAL)
+from homeassistant.const import (CONF_USERNAME, CONF_PASSWORD, CONF_SCAN_INTERVAL)
 from homeassistant.helpers import discovery
 from homeassistant.helpers.dispatcher import (dispatcher_send, async_dispatcher_connect)
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import track_time_interval
+
+from meross_iot.supported_devices.exceptions.CommandTimeoutException import CommandTimeoutException
 
 # Setting the logLevel to 40 will HIDE any message logged with severity less than 40 (40=WARNING, 30=INFO)
 l = logging.getLogger("meross_init")
@@ -17,8 +19,15 @@ l.setLevel(logging.DEBUG)
 REQUIREMENTS = ['meross_iot==0.2.0.1']
 
 DOMAIN = 'meross'
-MEROSS_HTTP_CLIENT = 'meross_http_client'
-MEROSS_DEVICES = 'meross_devices'
+
+MEROSS_HTTP_CLIENT = 'http_client'
+MEROSS_DEVICES_BY_ID = 'meross_devices_by_id'
+MEROSS_DEVICE = 'meross_device'
+MEROSS_LAST_DISCOVERED_DEVICE_IDS = 'last_discovered_device_ids'
+
+HA_SWITCH = 'switch'
+HA_SENSOR = 'sensor'
+HA_ENTITY_IDS = 'ha_entity_ids'
 
 SIGNAL_DELETE_ENTITY = 'meross_delete'
 SIGNAL_UPDATE_ENTITY = 'meross_update'
@@ -26,87 +35,130 @@ SIGNAL_UPDATE_ENTITY = 'meross_update'
 SERVICE_FORCE_UPDATE = 'force_update'
 SERVICE_PULL_DEVICES = 'pull_devices'
 
-SCAN_INTERVAL = timedelta(seconds=30)
+DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
+
+CONF_MEROSS_DEVICES_SCAN_INTERVAL = 'meross_devices_scan_interval'
+DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL = timedelta(minutes=15)
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
         vol.Required(CONF_PASSWORD): cv.string,
         vol.Required(CONF_USERNAME): cv.string,
 
-        vol.Optional(CONF_SCAN_INTERVAL, default=SCAN_INTERVAL): cv.time_period,
+        vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): cv.time_period,
+        vol.Optional(CONF_MEROSS_DEVICES_SCAN_INTERVAL, default=DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL): cv.time_period,
     })
 }, extra=vol.ALLOW_EXTRA)
 
 
 def setup(hass, config):
 
-    """Set up Meross Component."""
+    """Import MerossHttpClient from Meross.iot.api library"""
     from meross_iot.api import MerossHttpClient
 
+    """Get Meross Component configuration"""
     username = config[DOMAIN][CONF_USERNAME]
     password = config[DOMAIN][CONF_PASSWORD]
     scan_interval = config[DOMAIN][CONF_SCAN_INTERVAL]
+    meross_devices_scan_interval = config[DOMAIN][CONF_MEROSS_DEVICES_SCAN_INTERVAL]
 
     hass.data[DOMAIN] = {
-        'entity_id_by_device_id': {},
-        'last_scan_by_device_id': {},
-        'scan_interval': scan_interval,
-        'scanning': False
+        MEROSS_HTTP_CLIENT : None,
+        MEROSS_DEVICES_BY_ID: {},
     }
 
+    """ Called at the very beginning and periodically, each 5 seconds """
+    def update_devices_status():
+        for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
+            meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
+            channels = max(1, len(meross_device.get_channels()))
+            for channel in range(0, channels):
+                hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SWITCH][
+                    channel] = meross_device.get_channel_status(channel)
+            if meross_device.supports_electricity_reading():
+                try:
+                    for key, value in meross_device.get_electricity()['electricity'].items():
+                        hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SENSOR][key] = value
+                    pass
+                except (CommandTimeoutException):
+                    pass
+
+    """ Called at the very beginning and periodically, each 5 seconds """
+    def periodic_update_devices_status(event_time):
+        update_devices_status()
+
+    """ This is used to update the Meross Devices status periodically """
+    track_time_interval(hass, periodic_update_devices_status, scan_interval)
+
+    """ Called at the very beginning and periodically, every 15 minutes """
     def load_devices():
 
-        hass.data[MEROSS_HTTP_CLIENT] = MerossHttpClient(email=username, password=password)
+        """ Get Meross Http Client """
+        hass.data[DOMAIN][MEROSS_HTTP_CLIENT] = MerossHttpClient(email=username, password=password)
 
-        meross_devices = {}
-        for device in hass.data[MEROSS_HTTP_CLIENT].list_supported_devices():
-            meross_devices[device.device_id()] = device
-        hass.data[MEROSS_DEVICES] = meross_devices
+        """ Load the updated list of Meross devices """
+        meross_device_ids_by_type = {}
+        hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS] = []
+        for meross_device in hass.data[DOMAIN][MEROSS_HTTP_CLIENT].list_supported_devices():
+            """ Get the Meross device id """
+            meross_device_id = meross_device.device_id()
+            hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS].append(meross_device_id)
+            """ Check if the Meross device id has been already registered """
+            if meross_device_id not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
 
-        """Load new devices by device_type_list"""
-        device_type_list = {}
-        for device in hass.data[MEROSS_DEVICES].values():
-            if device.device_id() not in hass.data[DOMAIN]['entity_id_by_device_id']:
+                hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id] = {
+                    MEROSS_DEVICE: meross_device,
+                    HA_ENTITY_IDS: [],
+                    HA_SWITCH: {},
+                    HA_SENSOR: {},
+                }
+
                 """ switch discovery """
-                ha_type = 'switch'
-                if ha_type not in device_type_list:
-                    device_type_list[ha_type] = []
-                device_type_list[ha_type].append(device.device_id())
+                if HA_SWITCH not in meross_device_ids_by_type:
+                    meross_device_ids_by_type[HA_SWITCH] = []
+                meross_device_ids_by_type[HA_SWITCH].append(meross_device_id)
+
                 """ sensor discovery """
-                ha_type = 'sensor'
-                if ha_type not in device_type_list:
-                    device_type_list[ha_type] = []
-                device_type_list[ha_type].append(device.device_id())
-                hass.data[DOMAIN]['entity_id_by_device_id'][device.device_id()] = []
-                hass.data[DOMAIN]['last_scan_by_device_id'][device.device_id()] = None
-        for ha_type, dev_ids in device_type_list.items():
-            discovery.load_platform(hass, ha_type, DOMAIN, {'dev_ids': dev_ids}, config)
+                if HA_SENSOR not in meross_device_ids_by_type:
+                    meross_device_ids_by_type[HA_SENSOR] = []
+                meross_device_ids_by_type[HA_SENSOR].append(meross_device_id)
+
+        update_devices_status()
+
+        for ha_type, meross_device_ids in meross_device_ids_by_type.items():
+            discovery.load_platform(hass, ha_type, DOMAIN, {'meross_device_ids': meross_device_ids}, config)
 
     """Load Meross devices"""
     load_devices()
 
+    """ Called every 15 minutes """
     def poll_devices_update(event_time):
         """Check if accesstoken is expired and pull device list from server."""
+
         """ Discover available devices """
         load_devices()
+
         """ Delete no more existing Meross devices """
-        for meross_device_id in list(hass.data[DOMAIN]['entity_id_by_device_id']):
-            if meross_device_id not in hass.data[MEROSS_DEVICES].keys():
-                hass.data[DOMAIN]['entity_id_by_device_id'].pop(meross_device_id)
-                hass.data[DOMAIN]['last_scan_by_device_id'].pop(meross_device_id)
-                for entity_id in hass.data[DOMAIN]['entity_id_by_device_id'][meross_device_id]:
+        for meross_device_id in hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS]:
+            if meross_device_id not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
+                for entity_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][HA_ENTITY_IDS]:
                     dispatcher_send(hass, SIGNAL_DELETE_ENTITY, entity_id)
+                hass.data[DOMAIN][MEROSS_DEVICES_BY_ID].pop(meross_device_id)
 
+    """ This is used to update the Meross Device list periodically """
+    track_time_interval(hass, poll_devices_update, meross_devices_scan_interval)
 
-    track_time_interval(hass, poll_devices_update, timedelta(minutes=15))
+    """ Register it as a service >>> to be called by other functions ???"""
+    """ Decided to disable it"""
+    #hass.services.register(DOMAIN, SERVICE_PULL_DEVICES, poll_devices_update)
 
-    hass.services.register(DOMAIN, SERVICE_PULL_DEVICES, poll_devices_update)
+    #def force_update(call):
+    #    """Force all entities to pull data."""
+    #    dispatcher_send(hass, SIGNAL_UPDATE_ENTITY)
 
-    def force_update(call):
-        """Force all entities to pull data."""
-        dispatcher_send(hass, SIGNAL_UPDATE_ENTITY)
-
-    hass.services.register(DOMAIN, SERVICE_FORCE_UPDATE, force_update)
+    """ Register it as a service >>> to be called by other functions ??? """
+    """ Decided to disable it"""
+    #hass.services.register(DOMAIN, SERVICE_FORCE_UPDATE, force_update)
 
     return True
 
@@ -122,7 +174,7 @@ class MerossDevice(Entity):
 
     async def async_added_to_hass(self):
         """Call when entity is added to hass."""
-        self.hass.data[DOMAIN]['entity_id_by_device_id'][self.meross_device_id].append(self.entity_id)
+        self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_ENTITY_IDS].append(self.entity_id)
         async_dispatcher_connect(
             self.hass, SIGNAL_DELETE_ENTITY, self._delete_callback)
         async_dispatcher_connect(
@@ -149,47 +201,11 @@ class MerossDevice(Entity):
         return True
 
     def update(self):
-        """ Trying to update only when necessary """
-        """ This function can be called concurrenty by different threads """
-        """ Only one device at time can be queried, otherwise it hangs """
-        scanning = self.hass.data[DOMAIN].get('scanning')
-        if scanning is False:
-            self.hass.data[DOMAIN]['scanning'] = True
-            now = datetime.now()
-            scan_interval = self.hass.data[DOMAIN].get('scan_interval')
-            for meross_device_id in self.hass.data[DOMAIN]['last_scan_by_device_id'].keys():
-                update_device = False
-                if self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] is None:
-                    #l.debug('Entity ' + self.entity_id + ', self.hass.data[DOMAIN][\'last_scan_by_device_id\'][meross_device_id] is None >>> update needed!')
-                    update_device = True
-                else:
-                    last_scan = self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['last_scan']
-                    next_scan = last_scan + scan_interval
-                    #l.debug('Entity ' + self.entity_id + ', last scan: ' + str(last_scan) + ', next scan: ' + str(next_scan) + ', now: ' + str(now))
-                    if now >= next_scan:
-                        #l.debug('Entity ' + self.entity_id + ', now >= next_scan >>> update needed!')
-                        update_device = True
-                if update_device is True:
-                    if meross_device_id in self.hass.data[MEROSS_DEVICES]:
-                        meross_device = self.hass.data[MEROSS_DEVICES][meross_device_id]
-                        #l.debug('Entity ' + self.entity_id + ' >>> updating device id '+meross_device_id)
-                        channels = max(1, len(meross_device.get_channels()))
-                        if self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] is None:
-                            self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] = {}
-                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['last_scan'] = now
-                        if 'switch' not in self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]:
-                            self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'] = {}
-                        for channel in range(0, channels):
-                            status = meross_device.get_channel_status(channel)
-                            self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'][channel] = status
-                            #l.debug('Switch '+self.entity_id+' status updated ('+str(status)+')')
-                        if meross_device.supports_electricity_reading():
-                            self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['sensor'] = meross_device.get_electricity()['electricity']
-            self.hass.data[DOMAIN]['scanning'] = False
+        """ update is done in the update function"""
         None
 
     def device(self):
-        return self.hass.data[MEROSS_DEVICES][self.meross_device_id]
+        return self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][MEROSS_DEVICE]
 
     @callback
     def _delete_callback(self, meross_device_id):

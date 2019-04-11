@@ -2,7 +2,7 @@ import logging
 
 from datetime import timedelta
 from homeassistant.components.switch import ENTITY_ID_FORMAT, SwitchDevice
-from custom_components.meross import (DOMAIN as MEROSS_DOMAIN, MEROSS_DEVICES, MerossDevice)
+from custom_components.meross import (DOMAIN as MEROSS_DOMAIN, MEROSS_DEVICES_BY_ID, MEROSS_DEVICE, HA_SWITCH, MerossDevice)
 
 SCAN_INTERVAL = timedelta(seconds=10)
 
@@ -10,15 +10,16 @@ l = logging.getLogger("meross_switch")
 l.setLevel(logging.DEBUG)
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
+
     """Set up Meross Switch device."""
     if discovery_info is None:
         return
-    meross_devices = hass.data[MEROSS_DEVICES]
-    meross_device_ids = discovery_info.get('dev_ids')
-    entities = []
+
+    ha_entities = []
+    meross_device_ids = discovery_info.get('meross_device_ids')
     for meross_device_id in meross_device_ids:
-        if meross_devices[meross_device_id] is not None:
-            meross_device = meross_devices[meross_device_id]
+        if meross_device_id in hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID]:
+            meross_device = hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
             meross_device_info = str(meross_device)
             """ Some devices also have a dedicated channel for USB """
             usb_channel = meross_device.get_usb_channel_index()
@@ -31,8 +32,8 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
                 if usb_channel is not None:
                     if usb_channel == channel:
                         suffix = '_usb'
-                entities.append(MerossSwitch(hass, meross_device_id, meross_device_info, channel, suffix))
-    add_entities(entities)
+                ha_entities.append(MerossSwitch(hass, meross_device_id, meross_device_info, channel, suffix))
+    add_entities(ha_entities)
 
 class MerossSwitch(MerossDevice, SwitchDevice):
     """meross Switch Device."""
@@ -48,12 +49,9 @@ class MerossSwitch(MerossDevice, SwitchDevice):
     @property
     def is_on(self):
         """Return true if switch is on."""
-        status = self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]
-        if status is not None:
-            if 'switch' in status:
-                if self.channel in status['switch']:
-                    self.value = status['switch'][self.channel]
-                    #l.debug('Switch ' + self.meross_device_info + ' state updated (' + str(self.value) + ')')
+        if self.meross_device_id in self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID]:
+            if self.channel in self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SWITCH]
+                self.value = self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SWITCH][self.channel]
         return self.value
 
     def turn_on(self, **kwargs):
@@ -63,11 +61,8 @@ class MerossSwitch(MerossDevice, SwitchDevice):
             device.turn_on_channel(self.channel)
             """Force to update the status until the next scan"""
             self.value = True
-            status = self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]
-            if status is not None:
-                if 'switch' in status:
-                    if self.channel in status['switch']:
-                        self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]['switch'][self.channel] = self.value
+            if self.meross_device_id in self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID]:
+                self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SWITCH][self.channel] = self.value
 
     def turn_off(self, **kwargs):
         """Turn the device off"""
@@ -76,8 +71,5 @@ class MerossSwitch(MerossDevice, SwitchDevice):
             device.turn_off_channel(self.channel)
             """Force to update the status until the next scan"""
             self.value = False
-            status = self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]
-            if status is not None:
-                if 'switch' in status:
-                    if self.channel in status['switch']:
-                        self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]['switch'][self.channel] = self.value
+            if self.meross_device_id in self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID]:
+                self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SWITCH][self.channel] = self.value

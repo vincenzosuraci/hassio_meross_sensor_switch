@@ -1,10 +1,8 @@
-import logging, time, hmac, hashlib, random, base64, json, socket
-
+import logging
 from datetime import timedelta
-from homeassistant.util import Throttle
 from homeassistant.components.sensor import (DOMAIN, ENTITY_ID_FORMAT)
 
-from custom_components.meross import (DOMAIN as MEROSS_DOMAIN, MEROSS_DEVICES, MerossDevice)
+from custom_components.meross import (DOMAIN as MEROSS_DOMAIN, MEROSS_DEVICE, MEROSS_DEVICES_BY_ID, HA_SENSOR, MerossDevice)
 
 SCAN_INTERVAL = timedelta(seconds=10)
 
@@ -18,19 +16,20 @@ l = logging.getLogger("meross_sensor")
 l.setLevel(logging.DEBUG)
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
+
     if discovery_info is None:
         return
-    meross_devices = hass.data[MEROSS_DEVICES]
-    meross_device_ids = discovery_info.get('dev_ids')
-    entities = []
+
+    ha_entities = []
+    meross_device_ids = discovery_info.get('meross_device_ids')
     for meross_device_id in meross_device_ids:
-        if meross_devices[meross_device_id] is not None:
-            meross_device = meross_devices[meross_device_id]
+        if meross_device_id in hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID]:
+            meross_device = hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
             if meross_device.supports_electricity_reading():
                 for sensor in MEROSS_SENSORS_MAP.keys():
                     entity = MerossSensor(hass, sensor, meross_device.device_id())
-                    entities.append(entity)
-    add_entities(entities)
+                    ha_entities.append(entity)
+    add_entities(ha_entities)
 
 class MerossSensor(MerossDevice):
     """Representation of a Meross sensor."""
@@ -50,12 +49,9 @@ class MerossSensor(MerossDevice):
     @property
     def state(self):
        """Return the state of the sensor."""
-       status = self.hass.data[MEROSS_DOMAIN]['last_scan_by_device_id'][self.meross_device_id]
-       if status is not None:
-           if 'sensor' in status:
-               d = MEROSS_SENSORS_MAP[self.sensor]['decimals']
-               f = MEROSS_SENSORS_MAP[self.sensor]['factor']
-               self.value = status['sensor'][self.sensor]*f
+       if self.meross_device_id in self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID]:
+           f = MEROSS_SENSORS_MAP[self.sensor]['factor']
+           self.value = self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SENSOR][self.sensor]*f
        formatted_value = '{:.{d}f}'.format(self.value,d = MEROSS_SENSORS_MAP[self.sensor]['decimals'])
        return formatted_value
 
