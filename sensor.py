@@ -35,7 +35,7 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             if meross_device.supports_electricity_reading():
                 for sensor in MEROSS_SENSORS_MAP.keys():
                     ha_entities.append(MerossSensor(hass, sensor, meross_device_id))
-    await async_add_entities(ha_entities, update_before_add=False)
+    async_add_entities(ha_entities, update_before_add=False)
 
 
 class MerossSensor(MerossDevice):

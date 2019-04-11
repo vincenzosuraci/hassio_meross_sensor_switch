@@ -41,6 +41,8 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
                 ha_entities.append(MerossSwitch(hass, meross_device_id, meross_device_info, channel, suffix))
     await async_add_entities(ha_entities, update_before_add=False)
 
+    l.debug('async_setup_platform terminated')
+
 
 class MerossSwitch(MerossDevice, SwitchDevice):
     """meross Switch Device."""
