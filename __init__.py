@@ -14,7 +14,7 @@ from homeassistant.helpers.event import track_time_interval
 l = logging.getLogger("meross_init")
 l.setLevel(logging.DEBUG)
 
-REQUIREMENTS = ['meross_iot==0.2.0.0']
+REQUIREMENTS = ['meross_iot==0.2.0.1']
 
 DOMAIN = 'meross'
 MEROSS_HTTP_CLIENT = 'meross_http_client'
