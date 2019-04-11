@@ -47,8 +47,6 @@ def setup(hass, config):
     password = config[DOMAIN][CONF_PASSWORD]
     scan_interval = config[DOMAIN][CONF_SCAN_INTERVAL]
 
-    meross = MerossHttpClient(email=username, password=password)
-    hass.data[MEROSS_HTTP_CLIENT] = meross
     hass.data[DOMAIN] = {
         'entity_id_by_device_id': {},
         'last_scan_by_device_id': {},
@@ -57,6 +55,11 @@ def setup(hass, config):
     }
 
     def load_devices():
+
+        hass.data[MEROSS_HTTP_CLIENT] = None
+        meross = MerossHttpClient(email=username, password=password)
+        hass.data[MEROSS_HTTP_CLIENT] = meross
+
         hass.data[MEROSS_DEVICES] = {}
         for device in meross.list_supported_devices():
             hass.data[MEROSS_DEVICES][device.device_id()] = device
