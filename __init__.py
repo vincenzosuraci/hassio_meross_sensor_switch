@@ -73,8 +73,12 @@ def setup(hass, config):
             meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
             channels = max(1, len(meross_device.get_channels()))
             for channel in range(0, channels):
-                hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SWITCH][
-                    channel] = meross_device.get_channel_status(channel)
+                try:
+                    hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SWITCH][
+                        channel] = meross_device.get_channel_status(channel)
+                    pass
+                except (CommandTimeoutException):
+                    pass
             if meross_device.supports_electricity_reading():
                 try:
                     for key, value in meross_device.get_electricity()['electricity'].items():
