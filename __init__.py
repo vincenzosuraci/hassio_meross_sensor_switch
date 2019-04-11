@@ -56,13 +56,12 @@ def setup(hass, config):
 
     def load_devices():
 
-        hass.data[MEROSS_HTTP_CLIENT] = None
-        meross = MerossHttpClient(email=username, password=password)
-        hass.data[MEROSS_HTTP_CLIENT] = meross
+        hass.data[MEROSS_HTTP_CLIENT] = MerossHttpClient(email=username, password=password)
 
-        hass.data[MEROSS_DEVICES] = {}
-        for device in meross.list_supported_devices():
-            hass.data[MEROSS_DEVICES][device.device_id()] = device
+        meross_devices = {}
+        for device in hass.data[MEROSS_HTTP_CLIENT].list_supported_devices():
+            meross_devices[device.device_id()] = device
+        hass.data[MEROSS_DEVICES] = meross_devices
 
         """Load new devices by device_type_list"""
         device_type_list = {}
@@ -90,19 +89,21 @@ def setup(hass, config):
         """Check if accesstoken is expired and pull device list from server."""
         """ Discover available devices """
         load_devices()
-        """ Delete no more existing devices """
-        for dev_id in list(hass.data[DOMAIN]['entity_id_by_device_id']):
-            if dev_id not in hass.data[MEROSS_DEVICES].keys():
-                dispatcher_send(hass, SIGNAL_DELETE_ENTITY, dev_id)
-                hass.data[DOMAIN]['entity_id_by_device_id'].pop(dev_id)
-                hass.data[DOMAIN]['last_scan_by_device_id'].pop(dev_id)
+        """ Delete no more existing Meross devices """
+        for meross_device_id in list(hass.data[DOMAIN]['entity_id_by_device_id']):
+            if meross_device_id not in hass.data[MEROSS_DEVICES].keys():
+                hass.data[DOMAIN]['entity_id_by_device_id'].pop(meross_device_id)
+                hass.data[DOMAIN]['last_scan_by_device_id'].pop(meross_device_id)
+                for entity_id in hass.data[DOMAIN]['entity_id_by_device_id'][meross_device_id]:
+                    dispatcher_send(hass, SIGNAL_DELETE_ENTITY, entity_id)
+
 
     track_time_interval(hass, poll_devices_update, timedelta(minutes=15))
 
     hass.services.register(DOMAIN, SERVICE_PULL_DEVICES, poll_devices_update)
 
     def force_update(call):
-        """Force all devices to pull data."""
+        """Force all entities to pull data."""
         dispatcher_send(hass, SIGNAL_UPDATE_ENTITY)
 
     hass.services.register(DOMAIN, SERVICE_FORCE_UPDATE, force_update)
@@ -169,20 +170,21 @@ class MerossDevice(Entity):
                         #l.debug('Entity ' + self.entity_id + ', now >= next_scan >>> update needed!')
                         update_device = True
                 if update_device is True:
-                    meross_device = self.hass.data[MEROSS_DEVICES][meross_device_id]
-                    #l.debug('Entity ' + self.entity_id + ' >>> updating device id '+meross_device_id)
-                    channels = max(1, len(meross_device.get_channels()))
-                    if self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] is None:
-                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] = {}                    
-                    self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['last_scan'] = now
-                    if 'switch' not in self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]:
-                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'] = {}
-                    for channel in range(0, channels):
-                        status = meross_device.get_channel_status(channel)
-                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'][channel] = status
-                        #l.debug('Switch '+self.entity_id+' status updated ('+str(status)+')')
-                    if meross_device.supports_electricity_reading():
-                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['sensor'] = meross_device.get_electricity()['electricity']
+                    if meross_device_id in self.hass.data[MEROSS_DEVICES]:
+                        meross_device = self.hass.data[MEROSS_DEVICES][meross_device_id]
+                        #l.debug('Entity ' + self.entity_id + ' >>> updating device id '+meross_device_id)
+                        channels = max(1, len(meross_device.get_channels()))
+                        if self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] is None:
+                            self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id] = {}
+                        self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['last_scan'] = now
+                        if 'switch' not in self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]:
+                            self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'] = {}
+                        for channel in range(0, channels):
+                            status = meross_device.get_channel_status(channel)
+                            self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['switch'][channel] = status
+                            #l.debug('Switch '+self.entity_id+' status updated ('+str(status)+')')
+                        if meross_device.supports_electricity_reading():
+                            self.hass.data[DOMAIN]['last_scan_by_device_id'][meross_device_id]['sensor'] = meross_device.get_electricity()['electricity']
             self.hass.data[DOMAIN]['scanning'] = False
         None
 
