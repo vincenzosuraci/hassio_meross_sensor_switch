@@ -50,7 +50,7 @@ class MerossSwitch(MerossDevice, SwitchDevice):
     def is_on(self):
         """Return true if switch is on."""
         if self.meross_device_id in self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID]:
-            if self.channel in self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SWITCH]
+            if self.channel in self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SWITCH]:
                 self.value = self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SWITCH][self.channel]
         return self.value
 

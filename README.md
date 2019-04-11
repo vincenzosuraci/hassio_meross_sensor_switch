@@ -9,9 +9,7 @@ Devices
 Tested only with my [mss310](https://www.meross.com/product/6/article/) and 
 [mss210](https://www.meross.com/product/3/article/) version 2.0.0 smart outlets.
 However, refer to [Alberto Geniola](https://github.com/albertogeniola/MerossIot) for the full compatibility list.
-```
-Currently, the Smart WiFi Surge Protectors (e.g. MSS425E) are not supported.
-``` 
+
 
 Install
 ============
