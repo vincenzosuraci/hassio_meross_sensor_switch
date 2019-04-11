@@ -1,21 +1,28 @@
 import logging
+
+import asyncio
+
 from datetime import timedelta
 from homeassistant.components.sensor import (DOMAIN, ENTITY_ID_FORMAT)
 
 from custom_components.meross import (DOMAIN as MEROSS_DOMAIN, MEROSS_DEVICE, MEROSS_DEVICES_BY_ID, HA_SENSOR, MerossDevice)
 
+""" Is it necessary??? """
 SCAN_INTERVAL = timedelta(seconds=10)
 
 MEROSS_SENSORS_MAP = {
-    'power'                 : { 'eid' : 'power',   'uom' : 'W',  'icon' : 'mdi:flash-outline', 'factor' : 0.001, 'decimals':2 },
-    'current'               : { 'eid' : 'current', 'uom' : 'A',  'icon' : 'mdi:current-ac',    'factor' : 0.001, 'decimals':2 },
-    'voltage'               : { 'eid' : 'voltage', 'uom' : 'V',  'icon' : 'mdi:power-plug',    'factor' : 0.1,   'decimals':2 },
+    'power'   : { 'eid' : 'power',   'uom' : 'W',  'icon' : 'mdi:flash-outline', 'factor' : 0.001, 'decimals':2 },
+    'current' : { 'eid' : 'current', 'uom' : 'A',  'icon' : 'mdi:current-ac',    'factor' : 0.001, 'decimals':2 },
+    'voltage' : { 'eid' : 'voltage', 'uom' : 'V',  'icon' : 'mdi:power-plug',    'factor' : 0.1,   'decimals':2 },
 }
 
 l = logging.getLogger("meross_sensor")
 l.setLevel(logging.DEBUG)
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
+
+    l.debug('async_setup_platform called')
 
     if discovery_info is None:
         return
@@ -27,19 +34,32 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
             meross_device = hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
             if meross_device.supports_electricity_reading():
                 for sensor in MEROSS_SENSORS_MAP.keys():
-                    entity = MerossSensor(hass, sensor, meross_device.device_id())
-                    ha_entities.append(entity)
-    add_entities(ha_entities)
+                    ha_entities.append(MerossSensor(hass, sensor, meross_device_id))
+    await async_add_entities(ha_entities, update_before_add=False)
+
 
 class MerossSensor(MerossDevice):
     """Representation of a Meross sensor."""
 
     def __init__(self, hass, sensor, meross_device_id):
         """Initialize the device."""
-        sensor_id ="{}_{}_{}".format(MEROSS_DOMAIN, meross_device_id, MEROSS_SENSORS_MAP[sensor]['eid'])
+        sensor_id = "{}_{}_{}" . format(MEROSS_DOMAIN, meross_device_id, MEROSS_SENSORS_MAP[sensor]['eid'])
         super().__init__(hass, meross_device_id, ENTITY_ID_FORMAT, sensor_id)
+        l.debug('Entity ' + self.entity_id + ' created')
         self.sensor = sensor
         self.value = 0
+
+    async def async_get_value(self, f):
+        if self.meross_device_id in self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID]:
+            self.value = self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SENSOR][self.sensor]*f
+        return self.value
+
+    async def async_state(self):
+        """Return the state of the sensor."""
+        f = MEROSS_SENSORS_MAP[self.sensor]['factor']
+        value = await self.async_get_value(f)
+        formatted_value = '{:.{d}f}'.format(value,d = MEROSS_SENSORS_MAP[self.sensor]['decimals'])
+        return formatted_value
 
     @property
     def unit_of_measurement(self):
@@ -47,15 +67,10 @@ class MerossSensor(MerossDevice):
         return MEROSS_SENSORS_MAP[self.sensor]['uom']
 
     @property
-    def state(self):
-       """Return the state of the sensor."""
-       if self.meross_device_id in self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID]:
-           f = MEROSS_SENSORS_MAP[self.sensor]['factor']
-           self.value = self.hass.data[MEROSS_DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SENSOR][self.sensor]*f
-       formatted_value = '{:.{d}f}'.format(self.value,d = MEROSS_SENSORS_MAP[self.sensor]['decimals'])
-       return formatted_value
-
-    @property
     def icon(self):
         """Return the icon."""
         return MEROSS_SENSORS_MAP[self.sensor]['icon']
+
+    @property
+    def state(self):
+        return asyncio.run_coroutine_threadsafe(self.async_state(), self.hass.loop).result()
