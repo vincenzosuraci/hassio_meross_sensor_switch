@@ -59,6 +59,8 @@ CONFIG_SCHEMA = vol.Schema({
 
 
 async def async_setup(hass, config):
+    
+    l.debug('async_setup')
 
     """Get Meross Component configuration"""
     username = config[DOMAIN][CONF_USERNAME]
@@ -73,7 +75,7 @@ async def async_setup(hass, config):
 
     """ Called at the very beginning and periodically, each 5 seconds """
     async def async_update_devices_status():
-        #l.debug('async_update_devices_status() called')
+        l.debug('async_update_devices_status()')
         for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
             channels = max(1, len(meross_device.get_channels()))
@@ -101,13 +103,16 @@ async def async_setup(hass, config):
     """ Called at the very beginning and periodically, every 15 minutes """
     async def async_load_devices():
 
+        l.debug('async_load_devices()')
+        
         """ Get Meross Http Client """
         #hass.data[DOMAIN][MEROSS_HTTP_CLIENT] = MerossHttpClient(email=username, password=password)
 
         """ Load the updated list of Meross devices """
         meross_device_ids_by_type = {}
         hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS] = []
-        for meross_device in hass.data[DOMAIN][MEROSS_HTTP_CLIENT].list_supported_devices():
+        l.debug('calling list_supported_devices() >>> suspect of disconnection...')
+        for meross_device in hass.data[DOMAIN][MEROSS_HTTP_CLIENT].list_supported_devices():            
             """ Get the Meross device id """
             meross_device_id = meross_device.device_id()
             hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS].append(meross_device_id)
