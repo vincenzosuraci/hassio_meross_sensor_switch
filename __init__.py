@@ -19,8 +19,12 @@ from meross_iot.supported_devices.exceptions.CommandTimeoutException import Comm
 l = logging.getLogger("meross_init")
 l.setLevel(logging.DEBUG)
 
-REQUIREMENTS = ['meross_iot==0.2.0.1']
+""" This is needed to ensure meross_iot library is always updated """
+""" Ref: https://developers.home-assistant.io/docs/en/creating_integration_manifest.html"""
+REQUIREMENTS = ['meross_iot==0.2.0.2']
 
+""" This is needed, it impact on the name to be called in configurations.yaml """
+""" Ref: https://developers.home-assistant.io/docs/en/creating_integration_manifest.html"""
 DOMAIN = 'meross'
 
 MEROSS_HTTP_CLIENT = 'http_client'
@@ -38,10 +42,10 @@ SIGNAL_UPDATE_ENTITY = 'meross_update'
 SERVICE_FORCE_UPDATE = 'force_update'
 SERVICE_PULL_DEVICES = 'pull_devices'
 
-DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
+DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
 
 CONF_MEROSS_DEVICES_SCAN_INTERVAL = 'meross_devices_scan_interval'
-DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL = timedelta(minutes=15)
+DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL = timedelta(minutes=5)
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
@@ -63,12 +67,13 @@ async def async_setup(hass, config):
     meross_devices_scan_interval = config[DOMAIN][CONF_MEROSS_DEVICES_SCAN_INTERVAL]
 
     hass.data[DOMAIN] = {
-        MEROSS_HTTP_CLIENT : None,
+        MEROSS_HTTP_CLIENT : MerossHttpClient(email=username, password=password),
         MEROSS_DEVICES_BY_ID: {},
     }
 
     """ Called at the very beginning and periodically, each 5 seconds """
     async def async_update_devices_status():
+        #l.debug('async_update_devices_status() called')
         for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
             channels = max(1, len(meross_device.get_channels()))
@@ -97,7 +102,7 @@ async def async_setup(hass, config):
     async def async_load_devices():
 
         """ Get Meross Http Client """
-        hass.data[DOMAIN][MEROSS_HTTP_CLIENT] = MerossHttpClient(email=username, password=password)
+        #hass.data[DOMAIN][MEROSS_HTTP_CLIENT] = MerossHttpClient(email=username, password=password)
 
         """ Load the updated list of Meross devices """
         meross_device_ids_by_type = {}
@@ -129,7 +134,6 @@ async def async_setup(hass, config):
         await async_update_devices_status()
 
         for ha_type, meross_device_ids in meross_device_ids_by_type.items():
-            l.debug(ha_type)
             await discovery.async_load_platform(hass, ha_type, DOMAIN, {'meross_device_ids': meross_device_ids}, config)
 
 
@@ -153,7 +157,8 @@ async def async_setup(hass, config):
     """ This is used to update the Meross Device list periodically """
     async_track_time_interval(hass, async_poll_devices_update, meross_devices_scan_interval)
 
-    """ Register it as a service >>> to be called by other functions ???"""
+    """ Register it as a service """
+    """ Ref: https://developers.home-assistant.io/docs/en/dev_101_services.html"""
     """ Decided to disable it"""
     #hass.services.register(DOMAIN, SERVICE_PULL_DEVICES, poll_devices_update)
 
@@ -161,7 +166,8 @@ async def async_setup(hass, config):
     #    """Force all entities to pull data."""
     #    dispatcher_send(hass, SIGNAL_UPDATE_ENTITY)
 
-    """ Register it as a service >>> to be called by other functions ??? """
+    """ Register it as a service """
+    """ Ref: https://developers.home-assistant.io/docs/en/dev_101_services.html"""
     """ Decided to disable it"""
     #hass.services.register(DOMAIN, SERVICE_FORCE_UPDATE, force_update)
 
@@ -209,7 +215,7 @@ class MerossDevice(Entity):
         """ update is done in the update function"""
         pass
 
-    async def async_device(self):
+    def get_device(self):
         return self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][MEROSS_DEVICE]
 
     @callback
