@@ -45,7 +45,7 @@ SERVICE_PULL_DEVICES = 'pull_devices'
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
 
 CONF_MEROSS_DEVICES_SCAN_INTERVAL = 'meross_devices_scan_interval'
-DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL = timedelta(minutes=5)
+DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL = timedelta(minutes=1)
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
@@ -59,7 +59,7 @@ CONFIG_SCHEMA = vol.Schema({
 
 
 async def async_setup(hass, config):
-    
+
     l.debug('async_setup')
 
     """Get Meross Component configuration"""
@@ -104,7 +104,7 @@ async def async_setup(hass, config):
     async def async_load_devices():
 
         l.debug('async_load_devices()')
-        
+
         """ Get Meross Http Client """
         #hass.data[DOMAIN][MEROSS_HTTP_CLIENT] = MerossHttpClient(email=username, password=password)
 
@@ -112,12 +112,15 @@ async def async_setup(hass, config):
         meross_device_ids_by_type = {}
         hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS] = []
         l.debug('calling list_supported_devices() >>> suspect of disconnection...')
-        for meross_device in hass.data[DOMAIN][MEROSS_HTTP_CLIENT].list_supported_devices():            
+        """ Calling list_supported_devices() it seems that all the active Meross device classes disconnect """
+        for meross_device in hass.data[DOMAIN][MEROSS_HTTP_CLIENT].list_supported_devices():
             """ Get the Meross device id """
             meross_device_id = meross_device.device_id()
             hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS].append(meross_device_id)
             """ Check if the Meross device id has been already registered """
             if meross_device_id not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
+
+                l.debug('Meross device id ' + meross_device_id + ' is not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]')
 
                 hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id] = {
                     MEROSS_DEVICE: meross_device,
