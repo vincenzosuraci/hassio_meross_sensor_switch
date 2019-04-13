@@ -45,7 +45,7 @@ SERVICE_PULL_DEVICES = 'pull_devices'
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
 
 CONF_MEROSS_DEVICES_SCAN_INTERVAL = 'meross_devices_scan_interval'
-DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL = timedelta(minutes=1)
+DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL = timedelta(minutes=5)
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
