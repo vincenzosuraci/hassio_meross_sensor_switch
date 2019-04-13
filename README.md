@@ -14,8 +14,8 @@ However, refer to [Alberto Geniola](https://github.com/albertogeniola/MerossIot)
 Install
 ============
 
-- **Copy all the files, but README.md, into your "/config/custom_components/meross" folder.**
-- Your configuration should look like:
+- **Copy all the ".py" files into your "/config/custom_components/meross" folder.**
+1. Your configuration should look like:
 ```
 config
   custom_components
@@ -24,7 +24,8 @@ config
       sensor.py
       switch.py
 ```
-- The meross_iot framework will be downloaded automatically.
+2. Reboot Hassio or Home Assistant
+Note that the meross_iot framework will be downloaded automatically.
 
 Configuration
 ============
