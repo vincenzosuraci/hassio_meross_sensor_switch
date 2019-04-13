@@ -24,8 +24,8 @@ config
       sensor.py
       switch.py
 ```
-2. Reboot Hassio or Home Assistant
-Note that the meross_iot framework will be downloaded automatically.
+2. Remember to reboot Hassio (or Home Assistant)
+- Note that the meross_iot framework will be downloaded automatically.
 
 Configuration
 ============
