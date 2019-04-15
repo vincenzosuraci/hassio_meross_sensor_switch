@@ -30,6 +30,7 @@ DOMAIN = 'meross'
 MEROSS_HTTP_CLIENT = 'http_client'
 MEROSS_DEVICES_BY_ID = 'meross_devices_by_id'
 MEROSS_DEVICE = 'meross_device'
+MEROSS_NUM_CHANNELS = 'num_channels'
 MEROSS_LAST_DISCOVERED_DEVICE_IDS = 'last_discovered_device_ids'
 
 HA_SWITCH = 'switch'
@@ -78,19 +79,21 @@ async def async_setup(hass, config):
         #l.debug('async_update_devices_status()')
         for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
-            channels = max(1, len(meross_device.get_channels()))
+            channels = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_NUM_CHANNELS]
             for channel in range(0, channels):
                 try:
                     hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SWITCH][
                         channel] = meross_device.get_channel_status(channel)
                 except CommandTimeoutException:
+                    l.warning('CommandTimeoutException when executing get_channel_status()')
                     pass
-            if meross_device.supports_electricity_reading():
-                try:
+            try:
+                if meross_device.supports_electricity_reading():
                     for key, value in meross_device.get_electricity()['electricity'].items():
                         hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SENSOR][key] = value
-                except CommandTimeoutException:
-                    pass
+            except CommandTimeoutException:
+                l.warning('CommandTimeoutException when executing get_electricity()')
+                pass
 
     """ Called at the very beginning and periodically, each 5 seconds """
     async def async_periodic_update_devices_status(event_time):
@@ -113,40 +116,49 @@ async def async_setup(hass, config):
         hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS] = []
         #l.debug('calling list_supported_devices() >>> suspect of disconnection...')
 
-        """ ATTENTION: Calling list_supported_devices() disconnects all the active meross devices """
-        for meross_device in hass.data[DOMAIN][MEROSS_HTTP_CLIENT].list_supported_devices():
-            """ Get the Meross device id """
-            meross_device_id = meross_device.device_id()
-            hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS].append(meross_device_id)
-            """ Check if the Meross device id has been already registered """
-            if meross_device_id not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
-                #l.debug('Meross device id ' + meross_device_id + ' is not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]')
+        try:
+            """ ATTENTION: Calling list_supported_devices() disconnects all the active meross devices """
+            for meross_device in hass.data[DOMAIN][MEROSS_HTTP_CLIENT].list_supported_devices():
+                """ Get the Meross device id """
+                meross_device_id = meross_device.device_id()
+                hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS].append(meross_device_id)
+                """ Check if the Meross device id has been already registered """
+                if meross_device_id not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
+                    #l.debug('Meross device id ' + meross_device_id + ' is not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]')
+                    try:
+                        num_channels = max(1, len(meross_device.get_channels()))
+                        hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id] = {
+                            MEROSS_DEVICE: meross_device,
+                            MEROSS_NUM_CHANNELS: num_channels,
+                            HA_ENTITY_IDS: [],
+                            HA_SWITCH: {},
+                            HA_SENSOR: {},
+                        }
 
-                hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id] = {
-                    MEROSS_DEVICE: meross_device,
-                    HA_ENTITY_IDS: [],
-                    HA_SWITCH: {},
-                    HA_SENSOR: {},
-                }
+                        """ switch discovery """
+                        if HA_SWITCH not in meross_device_ids_by_type:
+                            meross_device_ids_by_type[HA_SWITCH] = []
+                        meross_device_ids_by_type[HA_SWITCH].append(meross_device_id)
 
-                """ switch discovery """
-                if HA_SWITCH not in meross_device_ids_by_type:
-                    meross_device_ids_by_type[HA_SWITCH] = []
-                meross_device_ids_by_type[HA_SWITCH].append(meross_device_id)
+                        """ sensor discovery """
+                        if HA_SENSOR not in meross_device_ids_by_type:
+                            meross_device_ids_by_type[HA_SENSOR] = []
+                        meross_device_ids_by_type[HA_SENSOR].append(meross_device_id)
+                    except CommandTimeoutException:
+                        l.warning('CommandTimeoutException when executing get_channels()')
+                        pass
+                else:
+                    """ Update with the new created meross_device... """
+                    hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE] = meross_device
 
-                """ sensor discovery """
-                if HA_SENSOR not in meross_device_ids_by_type:
-                    meross_device_ids_by_type[HA_SENSOR] = []
-                meross_device_ids_by_type[HA_SENSOR].append(meross_device_id)
-            else:
-                """ Update with the new created meross_device... """
-                hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE] = meross_device
+            await async_update_devices_status()
 
-        await async_update_devices_status()
-
-        for ha_type, meross_device_ids in meross_device_ids_by_type.items():
-            await discovery.async_load_platform(hass, ha_type, DOMAIN, {'meross_device_ids': meross_device_ids}, config)
-
+            for ha_type, meross_device_ids in meross_device_ids_by_type.items():
+                await discovery.async_load_platform(hass, ha_type, DOMAIN, {'meross_device_ids': meross_device_ids},
+                                                    config)
+        except CommandTimeoutException:
+            l.warning('CommandTimeoutException when executing list_supported_devices()')
+            pass
 
     """Load Meross devices"""
     await async_load_devices()
