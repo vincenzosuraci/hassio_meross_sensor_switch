@@ -33,11 +33,11 @@ Configuration
 - **Add your credentials to configuration.yaml**
 - username and password are mandatory
 - scan_interval is optional. It must be a positive integer number. It represents the seconds between two consecutive scans to gather new values of Meross devices' sensors and switches. 
-- meross_devices_scan_interval is optional. It must be a positive integer number. It represents the minutes between two consecutive scans to update the list of available Meross devices. 
+- meross_devices_scan_interval is optional. It must be a positive integer number. It represents the seconds between two consecutive scans to update the list of available Meross devices. 
 ```
 meross:
   username: !secret meross_userame
   password: !secret meross_password
   scan_interval: 10
-  meross_devices_scan_interval: 5
+  meross_devices_scan_interval: 300
 

@@ -51,13 +51,13 @@ class MerossSwitch(MerossDevice, SwitchDevice):
         """Init Meross switch device."""
         switch_id = "{}_{}{}".format(DOMAIN, meross_device_id, suffix)
         super().__init__(hass, meross_device_id, ENTITY_ID_FORMAT, switch_id)
-        #l.debug('Entity ' + self.entity_id + ' created')
+        l.debug('Entity ' + self.entity_id + ' created')
         self._is_on = False
         self.channel = channel
         self._name = meross_device_info.split('(')[0].rstrip()
 
     async def async_execute_switch_and_set_status(self):
-        #l.debug(self._name + ' >>> async_execute_switch_and_set_status() called')
+        l.debug(self._name + ' >>> async_execute_switch_and_set_status() called')
         device = self.get_device()
         if device is not None:
             if self._is_on:
@@ -70,17 +70,17 @@ class MerossSwitch(MerossDevice, SwitchDevice):
 
     async def async_turn_on(self):
         self._is_on = True
-        #l.debug(self._name+' >>> async_turn_on() called')
+        l.debug(self._name+' >>> async_turn_on() called')
         await self.async_execute_switch_and_set_status()
 
     async def async_turn_off(self):
         self._is_on = False
-        #l.debug(self._name+' >>> async_turn_off() called')
+        l.debug(self._name+' >>> async_turn_off() called')
         await self.async_execute_switch_and_set_status()
 
     """ OVERIDING """
     async def async_update(self):
-        #l.debug(self._name+' >>> async_update() called')
+        l.debug(self._name+' >>> async_update() called')
         """ update is done in the update function"""
         if self.meross_device_id in self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             if self.channel in self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SWITCH]:
@@ -95,6 +95,6 @@ class MerossSwitch(MerossDevice, SwitchDevice):
 
     @property
     def is_on(self):
-        #l.debug(self._name+' >>> is_on() called')
+        l.debug(self._name+' >>> is_on() called')
         return self._is_on
 

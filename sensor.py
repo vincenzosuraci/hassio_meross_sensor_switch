@@ -32,25 +32,27 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
     for meross_device_id in meross_device_ids:
         if meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
+            meross_device_info = str(meross_device)
             if meross_device.supports_electricity_reading():
                 for sensor in MEROSS_SENSORS_MAP.keys():
-                    ha_entities.append(MerossSensor(hass, sensor, meross_device_id))
+                    ha_entities.append(MerossSensor(hass, sensor, meross_device_id, meross_device_info))
     async_add_entities(ha_entities, update_before_add=False)
 
 
 class MerossSensor(MerossDevice):
     """Representation of a Meross sensor."""
 
-    def __init__(self, hass, sensor, meross_device_id):
+    def __init__(self, hass, sensor, meross_device_id, meross_device_info):
         """Initialize the device."""
         sensor_id = "{}_{}_{}" . format(DOMAIN, meross_device_id, MEROSS_SENSORS_MAP[sensor]['eid'])
         super().__init__(hass, meross_device_id, ENTITY_ID_FORMAT, sensor_id)
         l.debug('Entity ' + self.entity_id + ' created')
         self.sensor = sensor
+        self._name = meross_device_info.split('(')[0].rstrip()
         self._value = 0
     
     async def async_update(self):
-        l.debug('async_update() called')
+        l.debug(self._name+' >>> async_update() called')
         """ update is done in the update function"""        
         if self.meross_device_id in self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             f = MEROSS_SENSORS_MAP[self.sensor]['factor']
