@@ -52,7 +52,7 @@ class MerossSensor(MerossDevice):
         self._value = 0
     
     async def async_update(self):
-        l.debug(self._name+' >>> async_update() called')
+        l.debug(self._name+' >>> async_update()')
         """ update is done in the update function"""        
         if self.meross_device_id in self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             f = MEROSS_SENSORS_MAP[self.sensor]['factor']

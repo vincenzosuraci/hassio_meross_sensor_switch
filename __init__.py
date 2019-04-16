@@ -2,6 +2,8 @@ from datetime import timedelta
 import logging
 import voluptuous as vol
 
+from requests.exceptions import ConnectionError
+
 from homeassistant.core import callback
 from homeassistant.const import (CONF_USERNAME, CONF_PASSWORD, CONF_SCAN_INTERVAL)
 from homeassistant.helpers import config_validation as cv
@@ -13,7 +15,7 @@ from homeassistant.helpers.event import async_track_time_interval
 """Import MerossHttpClient from Meross.iot.api library"""
 from meross_iot.api import MerossHttpClient
 from meross_iot.api import UnauthorizedException
-from meross_iot.device_factory import build_wrapper
+from meross_iot.supported_devices.power_plugs import (GenericPlug, ClientStatus)
 from meross_iot.supported_devices.exceptions.CommandTimeoutException import CommandTimeoutException
 
 # Setting the logLevel to 40 will HIDE any message logged with severity less than 40 (40=WARNING, 30=INFO)
@@ -60,6 +62,21 @@ CONFIG_SCHEMA = vol.Schema({
 }, extra=vol.ALLOW_EXTRA)
 
 
+class HomeAssistantMerossGenericPlug(GenericPlug):
+    def __init__(self,
+                 token,
+                 key,
+                 user_id,
+                 **device_info):
+        super().__init__(token, key, user_id, **device_info)
+
+    def get_client_status(self):
+        return self._client_status
+
+    def is_connected(self):
+        return self._client_status == ClientStatus.CONNECTED or self._client_status == ClientStatus.SUBSCRIBED
+
+
 class HomeAssistantMerossHttpClient(MerossHttpClient):
     def __init__(self, email, password):
         super().__init__(email, password)
@@ -78,11 +95,10 @@ class HomeAssistantMerossHttpClient(MerossHttpClient):
         return supported_devices_info_by_id
 
     def get_device(self, device_info, online_only=True):
-        device_type = device_info['deviceType']
         online = device_info['onlineStatus']
         if online_only and online != 1:
             return None
-        return build_wrapper(self._token, self._key, self._userid, device_type, device_info)
+        return HomeAssistantMerossGenericPlug(self._token, self._key, self._userid, **device_info)
 
 
 async def async_setup(hass, config):
@@ -95,7 +111,7 @@ async def async_setup(hass, config):
     scan_interval = config[DOMAIN][CONF_SCAN_INTERVAL]
     meross_devices_scan_interval = config[DOMAIN][CONF_MEROSS_DEVICES_SCAN_INTERVAL]
 
-    """ When creating MerossHttpClient no connection is needed """
+    """ When creating HomeAssistantMerossHttpClient no connection is needed """
     hass.data[DOMAIN] = {
         MEROSS_HTTP_CLIENT: HomeAssistantMerossHttpClient(email=username, password=password),
         MEROSS_DEVICES_BY_ID: {},
@@ -106,21 +122,23 @@ async def async_setup(hass, config):
         l.debug('async_update_devices_status()')
         for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
-            channels = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_NUM_CHANNELS]
-            for channel in range(0, channels):
+            l.debug('device client status: '+str(meross_device.get_client_status()))
+            if meross_device.is_connected():
+                channels = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_NUM_CHANNELS]
+                for channel in range(0, channels):
+                    try:
+                        hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SWITCH][
+                            channel] = meross_device.get_channel_status(channel)
+                    except CommandTimeoutException:
+                        l.warning('CommandTimeoutException when executing get_channel_status()')
+                        pass
                 try:
-                    hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SWITCH][
-                        channel] = meross_device.get_channel_status(channel)
+                    if meross_device.supports_electricity_reading():
+                        for key, value in meross_device.get_electricity()['electricity'].items():
+                            hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SENSOR][key] = value
                 except CommandTimeoutException:
-                    l.warning('CommandTimeoutException when executing get_channel_status()')
+                    l.warning('CommandTimeoutException when executing get_electricity()')
                     pass
-            try:
-                if meross_device.supports_electricity_reading():
-                    for key, value in meross_device.get_electricity()['electricity'].items():
-                        hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SENSOR][key] = value
-            except CommandTimeoutException:
-                l.warning('CommandTimeoutException when executing get_electricity()')
-                pass
 
     """ Called at the very beginning and periodically, each 5 seconds """
     async def async_periodic_update_devices_status(event_time):
@@ -139,9 +157,6 @@ async def async_setup(hass, config):
         hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS] = []
 
         try:
-            if len(hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]) > 0:
-                l.debug('calling list_supported_devices() >>> will generate disconnection...')
-
             """ ATTENTION: Calling list_supported_devices() disconnects all the active meross devices """
             supported_devices_info_by_id = hass.data[DOMAIN][MEROSS_HTTP_CLIENT].supported_devices_info_by_id()
             for meross_device_id, meross_device_info in supported_devices_info_by_id.items():
@@ -180,6 +195,11 @@ async def async_setup(hass, config):
                     except CommandTimeoutException:
                         l.warning('CommandTimeoutException when executing get_channels()')
                         pass
+                else:
+                    meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
+                    if not meross_device.is_connected():
+                        meross_device = hass.data[DOMAIN][MEROSS_HTTP_CLIENT].get_device(meross_device_info)
+                        hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE] = meross_device
 
             await async_update_devices_status()
 
@@ -187,11 +207,15 @@ async def async_setup(hass, config):
                 await discovery.async_load_platform(hass, ha_type, DOMAIN, {'meross_device_ids': meross_device_ids},
                                                     config)
         except CommandTimeoutException:
-            l.warning('CommandTimeoutException when executing list_supported_devices()')
+            l.warning('CommandTimeoutException when executing supported_devices_info_by_id()')
             pass
         except UnauthorizedException:
-            l.warning('UnauthorizedException when executing list_supported_devices() >>> check: a) internet connection, b) Meross account credentials')
+            l.warning('UnauthorizedException when executing supported_devices_info_by_id() >>> check: a) internet connection, b) Meross account credentials')
             pass
+        except ConnectionError:
+            l.warning('ConnectionError when executing supported_devices_info_by_id() >>> check internet connection')
+            pass
+
 
     """Load Meross devices"""
     await async_load_devices()
