@@ -229,13 +229,19 @@ async def async_setup(hass, config):
         await async_load_devices()
 
         """ Delete no more existing Meross devices and related entities """
-        for meross_device_id, meross_device in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID].items():
-            if meross_device_id not in hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS]:
-                meross_device_name = str(meross_device)
-                l.debug('Meross device '+meross_device_name+' is no more online and will be deleted')
-                for entity_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][HA_ENTITY_IDS]:
-                    dispatcher_send(hass, SIGNAL_DELETE_ENTITY, entity_id)
-                hass.data[DOMAIN][MEROSS_DEVICES_BY_ID].pop(meross_device_id)
+        """ Removal of entities seems to not work... """
+        #meross_device_ids_to_be_removed = []
+        #for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
+        #    if meross_device_id not in hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS]:
+        #        meross_device_ids_to_be_removed.append(meross_device_id)
+        #        meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
+        #        meross_device_name = str(meross_device)
+        #        l.debug('Meross device '+meross_device_name+' is no more online and will be deleted')
+        #        for entity_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_ENTITY_IDS]:
+        #            dispatcher_send(hass, SIGNAL_DELETE_ENTITY, entity_id)
+
+        #for meross_device_id in meross_device_ids_to_be_removed:
+        #    hass.data[DOMAIN][MEROSS_DEVICES_BY_ID].pop(meross_device_id)
 
     """ This is used to update the Meross Device list periodically """
     l.debug('registering async_track_time_interval(hass, async_poll_devices_update, meross_devices_scan_interval)')
@@ -305,7 +311,7 @@ class MerossDevice(Entity):
     @callback
     def _delete_callback(self, meross_device_id):
         """Remove this entity."""
-        l.debug('_delete_callback() called')
+        l.debug('Entity '+self.entity_id+' >>> _delete_callback()')
         if meross_device_id == self.meross_device_id:
             self.hass.async_create_task(self.async_remove())
 
