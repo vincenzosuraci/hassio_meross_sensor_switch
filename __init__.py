@@ -106,15 +106,12 @@ async def async_setup(hass, config):
     """ Called at the very beginning and periodically, every 15 minutes """
     async def async_load_devices():
 
-        #l.debug('async_load_devices()')
-
-        """ Get Meross Http Client """
-        #hass.data[DOMAIN][MEROSS_HTTP_CLIENT] = MerossHttpClient(email=username, password=password)
+        l.debug('async_load_devices()')
 
         """ Load the updated list of Meross devices """
         meross_device_ids_by_type = {}
         hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS] = []
-        #l.debug('calling list_supported_devices() >>> suspect of disconnection...')
+        l.debug('calling list_supported_devices() >>> suspect of disconnection...')
 
         try:
             """ ATTENTION: Calling list_supported_devices() disconnects all the active meross devices """
@@ -124,7 +121,7 @@ async def async_setup(hass, config):
                 hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS].append(meross_device_id)
                 """ Check if the Meross device id has been already registered """
                 if meross_device_id not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
-                    #l.debug('Meross device id ' + meross_device_id + ' is not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]')
+                    l.debug('Meross device id ' + meross_device_id + ' is not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]')
                     try:
                         num_channels = max(1, len(meross_device.get_channels()))
                         hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id] = {
@@ -144,6 +141,7 @@ async def async_setup(hass, config):
                         if HA_SENSOR not in meross_device_ids_by_type:
                             meross_device_ids_by_type[HA_SENSOR] = []
                         meross_device_ids_by_type[HA_SENSOR].append(meross_device_id)
+
                     except CommandTimeoutException:
                         l.warning('CommandTimeoutException when executing get_channels()')
                         pass
@@ -244,10 +242,12 @@ class MerossDevice(Entity):
     @callback
     def _delete_callback(self, meross_device_id):
         """Remove this entity."""
+        l.debug('_delete_callback() called')
         if meross_device_id == self.meross_device_id:
             self.hass.async_create_task(self.async_remove())
 
     @callback
     def _update_callback(self):
+        l.debug('_update_callback() called')
         """Call update method."""
         self.async_schedule_update_ha_state(True)

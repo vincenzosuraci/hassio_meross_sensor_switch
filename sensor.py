@@ -22,7 +22,7 @@ l.setLevel(logging.DEBUG)
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
 
-    #l.debug('async_setup_platform called')
+    l.debug('async_setup_platform called')
 
     if discovery_info is None:
         return
@@ -45,12 +45,12 @@ class MerossSensor(MerossDevice):
         """Initialize the device."""
         sensor_id = "{}_{}_{}" . format(DOMAIN, meross_device_id, MEROSS_SENSORS_MAP[sensor]['eid'])
         super().__init__(hass, meross_device_id, ENTITY_ID_FORMAT, sensor_id)
-        #l.debug('Entity ' + self.entity_id + ' created')
+        l.debug('Entity ' + self.entity_id + ' created')
         self.sensor = sensor
         self._value = 0
     
     async def async_update(self):
-        #l.debug('async_update() called')
+        l.debug('async_update() called')
         """ update is done in the update function"""        
         if self.meross_device_id in self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             f = MEROSS_SENSORS_MAP[self.sensor]['factor']
