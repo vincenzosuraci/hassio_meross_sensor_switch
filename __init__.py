@@ -120,6 +120,7 @@ async def async_setup(hass, config):
     """ Called at the very beginning and periodically, each 5 seconds """
     async def async_update_devices_status():
         l.debug('async_update_devices_status()')
+        num_disconnected_devices = 0
         for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
             l.debug('device client status: '+str(meross_device.get_client_status()))
@@ -139,6 +140,11 @@ async def async_setup(hass, config):
                 except CommandTimeoutException:
                     l.warning('CommandTimeoutException when executing get_electricity()')
                     pass
+            else:
+                num_disconnected_devices += 1
+
+        if num_disconnected_devices > 0:
+            await async_load_devices()
 
     """ Called at the very beginning and periodically, each 5 seconds """
     async def async_periodic_update_devices_status(event_time):
