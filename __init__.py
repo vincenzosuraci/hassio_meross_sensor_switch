@@ -24,7 +24,7 @@ l.setLevel(logging.DEBUG)
 
 """ This is needed to ensure meross_iot library is always updated """
 """ Ref: https://developers.home-assistant.io/docs/en/creating_integration_manifest.html"""
-REQUIREMENTS = ['meross_iot==0.2.0.2']
+REQUIREMENTS = ['meross_iot==0.2.0.3']
 
 """ This is needed, it impact on the name to be called in configurations.yaml """
 """ Ref: https://developers.home-assistant.io/docs/en/creating_integration_manifest.html"""
