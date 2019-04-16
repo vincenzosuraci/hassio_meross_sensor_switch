@@ -10,11 +10,11 @@ from homeassistant.helpers.dispatcher import (dispatcher_send, async_dispatcher_
 from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import async_track_time_interval
 
-
 """Import MerossHttpClient from Meross.iot.api library"""
 from meross_iot.api import MerossHttpClient
-from meross_iot.supported_devices.exceptions.CommandTimeoutException import CommandTimeoutException
 from meross_iot.api import UnauthorizedException
+from meross_iot.device_factory import build_wrapper
+from meross_iot.supported_devices.exceptions.CommandTimeoutException import CommandTimeoutException
 
 # Setting the logLevel to 40 will HIDE any message logged with severity less than 40 (40=WARNING, 30=INFO)
 l = logging.getLogger("meross_init")
@@ -60,9 +60,34 @@ CONFIG_SCHEMA = vol.Schema({
 }, extra=vol.ALLOW_EXTRA)
 
 
+class HomeAssistantMerossHttpClient(MerossHttpClient):
+    def __init__(self, email, password):
+        super().__init__(email, password)
+
+    def supported_devices_info_by_id(self, online_only=True):
+        supported_devices_info_by_id = {}
+        for device_info in self.list_devices():
+            device_id = device_info['uuid']
+            online = device_info['onlineStatus']
+
+            if online_only and online != 1:
+                # The device is not online, so we skip it.
+                continue
+            else:
+                supported_devices_info_by_id[device_id] = device_info
+        return supported_devices_info_by_id
+
+    def get_device(self, device_info, online_only=True):
+        device_type = device_info['deviceType']
+        online = device_info['onlineStatus']
+        if online_only and online != 1:
+            return None
+        return build_wrapper(self._token, self._key, self._userid, device_type, device_info)
+
+
 async def async_setup(hass, config):
 
-    #l.debug('async_setup')
+    l.debug('async_setup()')
 
     """Get Meross Component configuration"""
     username = config[DOMAIN][CONF_USERNAME]
@@ -72,13 +97,13 @@ async def async_setup(hass, config):
 
     """ When creating MerossHttpClient no connection is needed """
     hass.data[DOMAIN] = {
-        MEROSS_HTTP_CLIENT : MerossHttpClient(email=username, password=password),
+        MEROSS_HTTP_CLIENT: HomeAssistantMerossHttpClient(email=username, password=password),
         MEROSS_DEVICES_BY_ID: {},
     }
 
     """ Called at the very beginning and periodically, each 5 seconds """
     async def async_update_devices_status():
-        #l.debug('async_update_devices_status()')
+        l.debug('async_update_devices_status()')
         for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
             channels = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_NUM_CHANNELS]
@@ -104,7 +129,6 @@ async def async_setup(hass, config):
     """ This is used to update the Meross Devices status periodically """
     async_track_time_interval(hass, async_periodic_update_devices_status, scan_interval)
 
-
     """ Called at the very beginning and periodically, every 15 minutes """
     async def async_load_devices():
 
@@ -113,17 +137,24 @@ async def async_setup(hass, config):
         """ Load the updated list of Meross devices """
         meross_device_ids_by_type = {}
         hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS] = []
-        if len(hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]) > 0:
-            l.debug('calling list_supported_devices() >>> suspect of disconnection...')
 
         try:
+            if len(hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]) > 0:
+                l.debug('calling list_supported_devices() >>> will generate disconnection...')
+
             """ ATTENTION: Calling list_supported_devices() disconnects all the active meross devices """
-            for meross_device in hass.data[DOMAIN][MEROSS_HTTP_CLIENT].list_supported_devices():
+            supported_devices_info_by_id = hass.data[DOMAIN][MEROSS_HTTP_CLIENT].supported_devices_info_by_id()
+            for meross_device_id, meross_device_info in supported_devices_info_by_id.items():
+
                 """ Get the Meross device id """
-                meross_device_id = meross_device.device_id()
                 hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS].append(meross_device_id)
+
                 """ Check if the Meross device id has been already registered """
                 if meross_device_id not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
+
+                    meross_device = hass.data[DOMAIN][MEROSS_HTTP_CLIENT].get_device(meross_device_info)
+
+                    """ New device found """
                     meross_device_name = str(meross_device).split('(')[0].rstrip()
                     l.debug('New Meross device found: ' + meross_device_name)
                     try:
@@ -149,9 +180,6 @@ async def async_setup(hass, config):
                     except CommandTimeoutException:
                         l.warning('CommandTimeoutException when executing get_channels()')
                         pass
-                else:
-                    """ Update with the new created meross_device... """
-                    hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE] = meross_device
 
             await async_update_devices_status()
 
@@ -171,18 +199,22 @@ async def async_setup(hass, config):
     """ Called every 15 minutes """
     async def async_poll_devices_update(event_time):
         """Check if accesstoken is expired and pull device list from server."""
+        l.debug('async_poll_devices_update()')
 
         """ Discover available devices """
         await async_load_devices()
 
-        """ Delete no more existing Meross devices """
-        for meross_device_id in hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS]:
-            if meross_device_id not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
+        """ Delete no more existing Meross devices and related entities """
+        for meross_device_id, meross_device in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID].items():
+            if meross_device_id not in hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS]:
+                meross_device_name = str(meross_device)
+                l.debug('Meross device '+meross_device_name+' is no more online and will be deleted')
                 for entity_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][HA_ENTITY_IDS]:
                     dispatcher_send(hass, SIGNAL_DELETE_ENTITY, entity_id)
                 hass.data[DOMAIN][MEROSS_DEVICES_BY_ID].pop(meross_device_id)
 
     """ This is used to update the Meross Device list periodically """
+    l.debug('registering async_track_time_interval(hass, async_poll_devices_update, meross_devices_scan_interval)')
     async_track_time_interval(hass, async_poll_devices_update, meross_devices_scan_interval)
 
     """ Register it as a service """

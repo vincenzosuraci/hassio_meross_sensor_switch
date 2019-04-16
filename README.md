@@ -30,7 +30,7 @@ config
 Configuration
 ============
 
-- **Add your credentials to configuration.yaml**
+**Add your credentials to configuration.yaml**
 - username and password are mandatory
 - scan_interval is optional. It must be a positive integer number. It represents the seconds between two consecutive scans to gather new values of Meross devices' sensors and switches. 
 - meross_devices_scan_interval is optional. It must be a positive integer number. It represents the seconds between two consecutive scans to update the list of available Meross devices. 
@@ -40,4 +40,18 @@ meross:
   password: !secret meross_password
   scan_interval: 10
   meross_devices_scan_interval: 300
+```
 
+Debug
+============
+
+**To enable debug diagnostics, add this to your configuration.yaml:**
+```
+logger:
+  default: WARNING
+  logs:
+    meross_sensor: DEBUG
+    meross_switch: DEBUG
+    meross_init: DEBUG
+    meross_powerplug: DEBUG
+```
