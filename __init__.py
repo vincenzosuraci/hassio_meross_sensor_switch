@@ -123,7 +123,8 @@ async def async_setup(hass, config):
         num_disconnected_devices = 0
         for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
-            l.debug('device client status: '+str(meross_device.get_client_status()))
+            meross_device_name = str(meross_device).split('(')[0].rstrip()
+            l.debug('Device ' + meross_device_name + ': ' + str(meross_device.get_client_status()))
             if meross_device.is_connected():
                 channels = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_NUM_CHANNELS]
                 for channel in range(0, channels):
@@ -163,7 +164,6 @@ async def async_setup(hass, config):
         hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS] = []
 
         try:
-            """ ATTENTION: Calling list_supported_devices() disconnects all the active meross devices """
             supported_devices_info_by_id = hass.data[DOMAIN][MEROSS_HTTP_CLIENT].supported_devices_info_by_id()
             for meross_device_id, meross_device_info in supported_devices_info_by_id.items():
 
@@ -220,6 +220,9 @@ async def async_setup(hass, config):
             pass
         except ConnectionError:
             l.warning('ConnectionError when executing supported_devices_info_by_id() >>> check internet connection')
+            pass
+        except:
+            l.warning('Exception occurred when executing supported_devices_info_by_id() >>> check internet connection')
             pass
 
 
@@ -279,39 +282,54 @@ class MerossDevice(Entity):
         self.hass = hass
 
     async def async_added_to_hass(self):
-        """Call when entity is added to hass."""
+        """ Called when an entity has their entity_id and hass object assigned, before it is written to the state
+        machine for the first time. Example uses: restore the state or subscribe to updates."""
+        l.debug('Entity ' + self.entity_id + ' >>> async_added_to_hass()')
         self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_ENTITY_IDS].append(self.entity_id)
         async_dispatcher_connect(
             self.hass, SIGNAL_DELETE_ENTITY, self._delete_callback)
         async_dispatcher_connect(
             self.hass, SIGNAL_UPDATE_ENTITY, self._update_callback)
 
+    async def async_will_remove_from_hass(self):
+        """ Called when an entity is about to be removed from Home Assistant. Example use: disconnect from the server or
+        unsubscribe from updates"""
+        l.debug('Entity ' + self.entity_id + ' >>> async_will_remove_from_hass()')
+        pass
+
     @property
     def device_id(self):
         """Return Meross device id."""
+        l.debug('Entity ' + self.entity_id + ' >>> device_id()')
         return self.meross_device_id
 
     @property
     def unique_id(self):
         """Return a unique ID."""
+        l.debug('Entity ' + self.entity_id + ' >>> unique_id()')
         return self.entity_id
 
     @property
     def name(self):
         """Return Meross device name."""
+        l.debug('Entity ' + self.entity_id + ' >>> name()')
         return self.meross_device_id
 
     @property
     def available(self):
         """Return if the device is available."""
+        l.debug('Entity ' + self.entity_id + ' >>> available()')
         return True
 
     async def async_update(self):
         """ update is done in the update function"""
+        l.debug('Entity ' + self.entity_id + ' >>> async_update()')
         pass
 
     def get_device(self):
+        l.debug('Entity ' + self.entity_id + ' >>> get_device()')
         return self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][MEROSS_DEVICE]
+
 
     @callback
     def _delete_callback(self, entity_id):
@@ -322,6 +340,6 @@ class MerossDevice(Entity):
 
     @callback
     def _update_callback(self):
-        l.debug('_update_callback() called')
+        l.debug('Entity ' + self.entity_id + ' >>> _update_callback()')
         """Call update method."""
         self.async_schedule_update_ha_state(True)

@@ -46,13 +46,13 @@ class MerossSensor(MerossDevice):
         """Initialize the device."""
         sensor_id = "{}_{}_{}" . format(DOMAIN, meross_device_id, MEROSS_SENSORS_MAP[sensor]['eid'])
         super().__init__(hass, meross_device_id, ENTITY_ID_FORMAT, sensor_id)
-        l.debug('Entity ' + self.entity_id + ' created')
         self.sensor = sensor
         self._name = meross_device_info.split('(')[0].rstrip()
+        l.debug(self._name + ' >>> ' + self.sensor + ' >>> __init__()')
         self._value = 0
     
     async def async_update(self):
-        l.debug(self._name+' >>> async_update()')
+        l.debug(self._name + ' >>> ' + self.sensor + ' >>> async_update()')
         """ update is done in the update function"""        
         if self.meross_device_id in self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             f = MEROSS_SENSORS_MAP[self.sensor]['factor']
@@ -60,15 +60,18 @@ class MerossSensor(MerossDevice):
 
     @property
     def unit_of_measurement(self):
+        l.debug(self._name + ' >>> ' + self.sensor + ' >>> unit_of_measurement()')
         """Return the unit of measurement."""
         return MEROSS_SENSORS_MAP[self.sensor]['uom']
 
     @property
     def icon(self):
+        l.debug(self._name + ' >>> ' + self.sensor + ' >>> icon()')
         """Return the icon."""
         return MEROSS_SENSORS_MAP[self.sensor]['icon']
 
     @property
     def state(self):
+        l.debug(self._name + ' >>> ' + self.sensor + ' >>> state()')
         formatted_value = '{:.{d}f}'.format(self._value, d=MEROSS_SENSORS_MAP[self.sensor]['decimals'])
         return formatted_value
