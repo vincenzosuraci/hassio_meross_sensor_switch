@@ -271,23 +271,26 @@ async def async_setup(hass, config):
 
     return True
 
-class MerossDevice(Entity):
+class MerossEntity(Entity):
     """ Meross device """
 
-    def __init__(self, hass, meross_device_id, ENTITY_ID_FORMAT, meross_entity_id, identifier):
+    def __init__(self, hass, meross_device_id, meross_device_name, meross_entity_id, meross_entity_name):
         """Register the physical Meross device id"""
-        self.meross_device_id = meross_device_id
+        self._meross_device_id = meross_device_id
         """Register the Meross entity id (switch, or sensor+type_of_sensor)"""
-        self.entity_id = ENTITY_ID_FORMAT.format(meross_entity_id)
-        self.identifier = identifier
+        self.entity_id = meross_entity_id
+        self._meross_entity_name = meross_entity_name
         self.hass = hass
+        self._meross_device_name = meross_device_name
+        self._available = False
+        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> __init__()')
 
     async def async_added_to_hass(self):
         """ Called when an entity has their entity_id and hass object assigned, before it is written to the state
         machine for the first time. Example uses: restore the state or subscribe to updates."""
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> async_added_to_hass()')
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> entity_id: ' + self.entity_id)
-        self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_ENTITY_IDS].append(self.entity_id)
+        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> async_added_to_hass()')
+        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> entity_id: ' + self.entity_id)
+        self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self._meross_device_id][HA_ENTITY_IDS].append(self.entity_id)
         async_dispatcher_connect(
             self.hass, SIGNAL_DELETE_ENTITY, self._delete_callback)
         async_dispatcher_connect(
@@ -296,53 +299,52 @@ class MerossDevice(Entity):
     async def async_will_remove_from_hass(self):
         """ Called when an entity is about to be removed from Home Assistant. Example use: disconnect from the server or
         unsubscribe from updates"""
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> async_will_remove_from_hass()')
+        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> async_will_remove_from_hass()')
         pass
 
     @property
     def device_id(self):
         """Return Meross device id."""
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> device_id() >>> ' + self.meross_device_id)
-        return self.meross_device_id
+        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> device_id() >>> ' + self._meross_device_id)
+        return self._meross_device_id
 
     @property
     def unique_id(self):
         """Return a unique ID."""
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> unique_id() >>> ' + self.entity_id)
+        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> unique_id() >>> ' + self.entity_id)
         return self.entity_id
 
     @property
     def name(self):
         """Return Meross device name."""
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> name() >>> ' + self._name)
-        return self._name
+        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> name() >>> ' + self._meross_device_name)
+        return self._meross_device_name
 
     @property
     def available(self):
         """Return if the device is available."""
-        available = True
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> available() >>>' + str(available))
-        return available
+        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> available() >>> ' + str(self._available))
+        return self._available
 
     async def async_update(self):
         """ update is done in the update function"""
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> async_update()')
+        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> async_update()')
         pass
 
     def get_device(self):
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> get_device()')
-        return self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][MEROSS_DEVICE]
+        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> get_device()')
+        return self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self._meross_device_id][MEROSS_DEVICE]
 
 
     @callback
     def _delete_callback(self, entity_id):
         """Remove this entity."""
         if entity_id == self.entity_id:
-            _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> _delete_callback()')
+            _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> _delete_callback()')
             self.hass.async_create_task(self.async_remove())
 
     @callback
     def _update_callback(self):
         """Call update method."""
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> _update_callback()')
+        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> _update_callback()')
         self.async_schedule_update_ha_state(True)
