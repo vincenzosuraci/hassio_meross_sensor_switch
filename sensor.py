@@ -16,13 +16,13 @@ MEROSS_SENSORS_MAP = {
     'voltage' : { 'eid' : 'voltage', 'uom' : 'V',  'icon' : 'mdi:power-plug',    'factor' : 0.1,   'decimals':2 },
 }
 
-l = logging.getLogger("meross_sensor")
-l.setLevel(logging.DEBUG)
-
+""" Setting log """
+_LOGGER = logging.getLogger('meross_'+__name__.replace('_', ''))
+_LOGGER.setLevel(logging.DEBUG)
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
 
-    l.debug('async_setup_platform called')
+    _LOGGER.debug('async_setup_platform called')
 
     if discovery_info is None:
         return
@@ -44,34 +44,34 @@ class MerossSensor(MerossDevice):
 
     def __init__(self, hass, sensor, meross_device_id, meross_device_info):
         """Initialize the device."""
-        sensor_id = "{}_{}_{}" . format(DOMAIN, meross_device_id, MEROSS_SENSORS_MAP[sensor]['eid'])
+        sensor_id = "{}_{}_{}" . format(DOMAIN, meross_device_id, MEROSS_SENSORS_MAP[sensor]['eid'], sensor)
         super().__init__(hass, meross_device_id, ENTITY_ID_FORMAT, sensor_id)
-        self.sensor = sensor
+        self._sensor = sensor
         self._name = meross_device_info.split('(')[0].rstrip()
-        l.debug(self._name + ' >>> ' + self.sensor + ' >>> __init__()')
+        _LOGGER.debug(self._name + ' >>> ' + self.idenfier + ' >>> __init__()')
         self._value = 0
     
     async def async_update(self):
-        l.debug(self._name + ' >>> ' + self.sensor + ' >>> async_update()')
+        _LOGGER.debug(self._name + ' >>> ' + self.idenfier + ' >>> async_update()')
         """ update is done in the update function"""        
         if self.meross_device_id in self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
-            f = MEROSS_SENSORS_MAP[self.sensor]['factor']
-            self._value = self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SENSOR][self.sensor]*f
+            f = MEROSS_SENSORS_MAP[self._sensor]['factor']
+            self._value = self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self.meross_device_id][HA_SENSOR][self._sensor]*f
 
     @property
     def unit_of_measurement(self):
-        l.debug(self._name + ' >>> ' + self.sensor + ' >>> unit_of_measurement()')
+        _LOGGER.debug(self._name + ' >>> ' + self.idenfier + ' >>> unit_of_measurement()')
         """Return the unit of measurement."""
-        return MEROSS_SENSORS_MAP[self.sensor]['uom']
+        return MEROSS_SENSORS_MAP[self._sensor]['uom']
 
     @property
     def icon(self):
-        l.debug(self._name + ' >>> ' + self.sensor + ' >>> icon()')
+        _LOGGER.debug(self._name + ' >>> ' + self.idenfier + ' >>> icon()')
         """Return the icon."""
-        return MEROSS_SENSORS_MAP[self.sensor]['icon']
+        return MEROSS_SENSORS_MAP[self._sensor]['icon']
 
     @property
     def state(self):
-        l.debug(self._name + ' >>> ' + self.sensor + ' >>> state()')
-        formatted_value = '{:.{d}f}'.format(self._value, d=MEROSS_SENSORS_MAP[self.sensor]['decimals'])
+        _LOGGER.debug(self._name + ' >>> ' + self.idenfier + ' >>> state()')
+        formatted_value = '{:.{d}f}'.format(self._value, d=MEROSS_SENSORS_MAP[self._sensor]['decimals'])
         return formatted_value
