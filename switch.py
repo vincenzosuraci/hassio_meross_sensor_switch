@@ -10,7 +10,7 @@ from custom_components.meross import (DOMAIN as DOMAIN, MEROSS_DEVICES_BY_ID, ME
 SCAN_INTERVAL = timedelta(seconds=10)
 
 """ Setting log """
-_LOGGER = logging.getLogger('meross_'+__name__.replace('_', ''))
+_LOGGER = logging.getLogger('meross_switch')
 _LOGGER.setLevel(logging.DEBUG)
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
@@ -54,7 +54,7 @@ class MerossSwitch(MerossDevice, SwitchDevice):
         self._is_on = False
         self.channel = channel
         self._name = meross_device_info.split('(')[0].rstrip()
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> created')
+        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> __init__()')
 
     async def async_execute_switch_and_set_status(self):
         _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> async_execute_switch_and_set_status()')
@@ -91,11 +91,11 @@ class MerossSwitch(MerossDevice, SwitchDevice):
     @property
     def name(self):
         """Name of the device."""
-        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> name()')
+        _LOGGER.debug(self._name + ' >>> ' + self.identifier + ' >>> name() >>> ' + self._name)
         return self._name
 
     @property
     def is_on(self):
-        _LOGGER.debug(self._name+' >>> ' + self.identifier + ' >>> is_on()')
+        _LOGGER.debug(self._name+' >>> ' + self.identifier + ' >>> is_on() >>> ' + str(self._is_on))
         return self._is_on
 
