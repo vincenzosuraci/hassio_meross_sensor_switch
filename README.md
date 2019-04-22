@@ -25,7 +25,15 @@ config
       switch.py
 ```
 2. **Remember to reboot Hassio (or Home Assistant)**
-- Note that the meross_iot framework will be downloaded automatically.
+
+Dependencies
+============
+**This custom-component relies on the python meross_iot library developed by [Alberto Geniola](https://github.com/albertogeniola/MerossIot).**
+- On [Hassio](https://www.home-assistant.io/hassio/) (i.e., Home Assistant for Raspberry pi) the 
+[meross_iot](https://github.com/albertogeniola/MerossIot) framework will be downloaded automatically;
+- On other [Home Assistant](https://www.home-assistant.io/getting-started/) installations, if the dependencies fails to 
+be loaded, install it [manually](https://github.com/albertogeniola/MerossIot#installation). 
+
 
 Configuration
 ============

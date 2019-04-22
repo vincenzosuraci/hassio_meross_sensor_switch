@@ -145,11 +145,13 @@ async def async_setup(hass, config):
                 num_disconnected_devices += 1
 
         if num_disconnected_devices > 0:
-            await async_load_devices()
+            #await async_load_devices()
+            hass.async_create_task(async_load_devices())
 
     """ Called at the very beginning and periodically, each 5 seconds """
     async def async_periodic_update_devices_status(event_time):
-        await async_update_devices_status()
+        #await async_update_devices_status()
+        hass.async_create_task(async_update_devices_status())
 
     """ This is used to update the Meross Devices status periodically """
     async_track_time_interval(hass, async_periodic_update_devices_status, scan_interval)
