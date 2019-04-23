@@ -15,7 +15,8 @@ from homeassistant.helpers.event import async_track_time_interval
 """Import MerossHttpClient from Meross.iot.api library"""
 from meross_iot.api import MerossHttpClient
 from meross_iot.api import UnauthorizedException
-from meross_iot.supported_devices.power_plugs import (GenericPlug, ClientStatus)
+from meross_iot.supported_devices.power_plugs import GenericPlug
+from meross_iot.supported_devices.client_status import ClientStatus
 from meross_iot.supported_devices.exceptions.CommandTimeoutException import CommandTimeoutException
 
 """ Setting log """
@@ -24,7 +25,7 @@ _LOGGER.setLevel(logging.DEBUG)
 
 """ This is needed to ensure meross_iot library is always updated """
 """ Ref: https://developers.home-assistant.io/docs/en/creating_integration_manifest.html"""
-REQUIREMENTS = ['meross_iot==0.2.0.3']
+REQUIREMENTS = ['meross_iot==0.2.1.1']
 
 """ This is needed, it impact on the name to be called in configurations.yaml """
 """ Ref: https://developers.home-assistant.io/docs/en/creating_integration_manifest.html"""
@@ -71,10 +72,11 @@ class HomeAssistantMerossGenericPlug(GenericPlug):
         super().__init__(token, key, user_id, **device_info)
 
     def get_client_status(self):
-        return self._client_status
+        return self._connection_manager.get_status()
 
-    def is_connected(self):
-        return self._client_status == ClientStatus.CONNECTED or self._client_status == ClientStatus.SUBSCRIBED
+    def is_active(self):
+        status = self._connection_manager.get_status()
+        return status == ClientStatus.CONNECTED or status == ClientStatus.SUBSCRIBED
 
 
 class HomeAssistantMerossHttpClient(MerossHttpClient):
@@ -117,35 +119,56 @@ async def async_setup(hass, config):
         MEROSS_DEVICES_BY_ID: {},
     }
 
-    """ Called at the very beginning and periodically, each 5 seconds """
+    """ Called at the very beginning and periodically, each 'scan_interval' seconds """
     async def async_update_devices_status():
+        # debug
         _LOGGER.debug('async_update_devices_status()')
-        num_disconnected_devices = 0
+        # count the inactive devices
+        num_inactive_devices = 0
         for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
+            # get the Meross Device object
             meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
+            # get the Meross Device name
             meross_device_name = str(meross_device).split('(')[0].rstrip()
+            #debug
             _LOGGER.debug('Device ' + meross_device_name + ': ' + str(meross_device.get_client_status()))
-            if meross_device.is_connected():
-                channels = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_NUM_CHANNELS]
-                for channel in range(0, channels):
+            # check if the Meross Device object is active (i.e. still subscribed to the Meross Mqtt server)
+            if meross_device.is_active():
+                # get the num of channels (switches) associated to this device
+                num_channels = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_NUM_CHANNELS]
+                # for each channel (switch), update its status (on/off)
+                for channel in range(0, num_channels):
                     try:
+                        # update the Meross Device switch status
+                        # WARNING: potentially blocking >>> CommandTimeoutException expected
                         hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SWITCH][
                             channel] = meross_device.get_channel_status(channel)
                     except CommandTimeoutException:
+                        # Handle a CommandTimeoutException
                         _LOGGER.warning('CommandTimeoutException when executing get_channel_status()')
                         pass
+                # update the electricity info, if the Meross Device supports it
                 try:
+                    # check of the Meross Device supports electricity reading
+                    # WARNING: potentially blocking >>> CommandTimeoutException expected
                     if meross_device.supports_electricity_reading():
-                        for key, value in meross_device.get_electricity()['electricity'].items():
-                            hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SENSOR][key] = value
+                        try:
+                            # for each electricity <key,value> pair, save it in hass object
+                            # WARNING: potentially blocking >>> CommandTimeoutException expected
+                            for key, value in meross_device.get_electricity()['electricity'].items():
+                                hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SENSOR][key] = value
+                        except CommandTimeoutException:
+                            _LOGGER.warning('CommandTimeoutException when executing get_electricity()')
+                            pass
                 except CommandTimeoutException:
-                    _LOGGER.warning('CommandTimeoutException when executing get_electricity()')
+                    _LOGGER.warning('CommandTimeoutException when executing supports_electricity_reading()')
                     pass
             else:
-                num_disconnected_devices += 1
+                num_inactive_devices += 1
 
-        if num_disconnected_devices > 0:
-            #await async_load_devices()
+        if num_inactive_devices > 0:
+            # Some previously discovered devices are no more active: it means that the Meross Device object has been
+            # disconnected. Let's check again their availability and try to rebuild
             hass.async_create_task(async_load_devices())
 
     """ Called at the very beginning and periodically, each 5 seconds """
@@ -166,6 +189,7 @@ async def async_setup(hass, config):
         hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS] = []
 
         try:
+            # WARNING: blocking function >>> Exceptions may occur
             supported_devices_info_by_id = hass.data[DOMAIN][MEROSS_HTTP_CLIENT].supported_devices_info_by_id()
             for meross_device_id, meross_device_info in supported_devices_info_by_id.items():
 
@@ -205,7 +229,7 @@ async def async_setup(hass, config):
                         pass
                 else:
                     meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
-                    if not meross_device.is_connected():
+                    if not meross_device.is_active():
                         meross_device = hass.data[DOMAIN][MEROSS_HTTP_CLIENT].get_device(meross_device_info)
                         hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE] = meross_device
 
@@ -240,18 +264,13 @@ async def async_setup(hass, config):
         await async_load_devices()
 
         """ Delete no more existing Meross devices and related entities """
-        """ Removal of entities seems to not work... """
-        meross_device_ids_to_be_removed = []
         for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             if meross_device_id not in hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS]:
-                meross_device_ids_to_be_removed.append(meross_device_id)
                 meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
                 meross_device_name = str(meross_device)
                 _LOGGER.debug('Meross device '+meross_device_name+' is no more online and will be deleted')
                 for entity_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_ENTITY_IDS]:
                     dispatcher_send(hass, SIGNAL_DELETE_ENTITY, entity_id)
-        for meross_device_id in meross_device_ids_to_be_removed:
-            hass.data[DOMAIN][MEROSS_DEVICES_BY_ID].pop(meross_device_id)
 
     """ This is used to update the Meross Device list periodically """
     _LOGGER.debug('registering async_track_time_interval(hass, async_poll_devices_update, meross_devices_scan_interval)')
