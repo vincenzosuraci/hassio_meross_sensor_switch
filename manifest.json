@@ -4,5 +4,5 @@
   "documentation": "https://github.com/vincenzosuraci/hassio_meross_sensor_switch",
   "dependencies": [],
   "codeowners": ["@vincenzosuraci"],
-  "requirements": ["meross_iot==0.2.1.1"]
+  "requirements": ["meross_iot==0.2.2.1"]
 }
