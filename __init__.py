@@ -78,6 +78,11 @@ class HomeAssistantMerossGenericPlug(GenericPlug):
         status = self._connection_manager.get_status()
         return status == ClientStatus.CONNECTED or status == ClientStatus.SUBSCRIBED
 
+    def _on_disconnect(self, client, userdata, rc):
+        _LOGGER.debug(str(self) + ' >>> _on_disconnect()')
+        super()._on_disconnect(client, userdata, rc)
+
+
 
 class HomeAssistantMerossHttpClient(MerossHttpClient):
     def __init__(self, email, password):
@@ -97,6 +102,7 @@ class HomeAssistantMerossHttpClient(MerossHttpClient):
         return supported_devices_info_by_id
 
     def get_device(self, device_info, online_only=True):
+        _LOGGER.debug('get_device()')
         online = device_info['onlineStatus']
         if online_only and online != 1:
             return None
@@ -190,7 +196,9 @@ async def async_setup(hass, config):
 
         try:
             # WARNING: blocking function >>> Exceptions may occur
+            _LOGGER.debug('supported_devices_info_by_id()')
             supported_devices_info_by_id = hass.data[DOMAIN][MEROSS_HTTP_CLIENT].supported_devices_info_by_id()
+            _LOGGER.debug(str(len(supported_devices_info_by_id)) + ' supported devices found')
             for meross_device_id, meross_device_info in supported_devices_info_by_id.items():
 
                 """ Get the Meross device id """
@@ -199,6 +207,7 @@ async def async_setup(hass, config):
                 """ Check if the Meross device id has been already registered """
                 if meross_device_id not in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
 
+                    _LOGGER.debug('Meross device id ' + meross_device_id + ' not yet registered')
                     meross_device = hass.data[DOMAIN][MEROSS_HTTP_CLIENT].get_device(meross_device_info)
 
                     """ New device found """
