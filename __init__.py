@@ -134,10 +134,10 @@ def update_device_status_by_id(hass, meross_device_id):
         try:
             # update the Meross Device switch status
             # WARNING: potentially blocking >>> CommandTimeoutException expected
-            _LOGGER.warning(meross_device_name + ' >>> get_channel_status()')
+            _LOGGER.debug(meross_device_name + ' >>> get_channel_status()')
             channel_status = meross_device.get_channel_status(channel)
             hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SWITCH][channel] = channel_status
-            _LOGGER.warning(meross_device_name + ' >>> channel ' + str(channel) + ' >>> ' + str(channel_status))
+            _LOGGER.debug(meross_device_name + ' >>> channel ' + str(channel) + ' >>> ' + str(channel_status))
         except StatusTimeoutException:
             # Handle a StatusTimeoutException
             # Error while waiting for status ClientStatus.SUBSCRIBED. Last status is: ClientStatus.CONNECTED
