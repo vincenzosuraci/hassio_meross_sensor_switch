@@ -42,6 +42,9 @@ MEROSS_NUM_CHANNELS = 'num_channels'
 MEROSS_LOAD_DEVICES_THREAD = 'load_devices_thread'
 MEROSS_UPDATE_DEVICES_STATUS_THREAD = 'update_devices_status_thread'
 MEROSS_LAST_DISCOVERED_DEVICE_IDS = 'last_discovered_device_ids'
+MEROSS_MAIN_LOOP_THREAD = 'main_loop_thread'
+UPDATE_MEROSS_DEVICES_LIST_FLAG = 'update_devices_list'
+UPDATE_MEROSS_DEVICES_STATUS_FLAG = 'update_devices_status'
 
 HA_SWITCH = 'switch'
 HA_SENSOR = 'sensor'
@@ -120,6 +123,18 @@ class HomeAssistantMerossHttpClient(MerossHttpClient):
         _LOGGER.debug('HomeAssistantMerossHttpClient >>> _del_()')
         # super().__del__(self)
 
+
+def thread_main_loop(hass, config):
+    _LOGGER.debug('thread_main_loop()')
+    while True:
+        if hass.data[DOMAIN][UPDATE_MEROSS_DEVICES_LIST_FLAG]:
+            hass.data[DOMAIN][UPDATE_MEROSS_DEVICES_LIST_FLAG] = False
+            thread_update_devices_list(hass, config)
+        if hass.data[DOMAIN][UPDATE_MEROSS_DEVICES_STATUS_FLAG]:
+            hass.data[DOMAIN][UPDATE_MEROSS_DEVICES_STATUS_FLAG] = False
+            thread_update_devices_status(hass, config)
+
+
 def update_device_status_by_id(hass, meross_device_id):
     # get the Meross Device object
     meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
@@ -157,8 +172,12 @@ def update_device_status_by_id(hass, meross_device_id):
                 # for each electricity <key,value> pair, save it in hass object
                 # WARNING: potentially blocking >>> CommandTimeoutException expected
                 _LOGGER.debug(meross_device_name + ' >>> get_electricity()')
-                for key, value in meross_device.get_electricity()['electricity'].items():
-                    hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SENSOR][key] = value
+                electricity = meross_device.get_electricity()
+                if 'electricity' in electricity:
+                    for key, value in electricity['electricity'].items():
+                        hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SENSOR][key] = value
+                else:
+                    _LOGGER.warning(meross_device_name + ' >>> electricity not found in dict')
             except CommandTimeoutException:
                 _LOGGER.warning('CommandTimeoutException when executing get_electricity()')
                 pass
@@ -195,6 +214,7 @@ def thread_update_devices_status(hass, config):
         hass.async_create_task(async_update_device_list(hass, config))
     pass
 
+
 def remove_entities(hass):
     """ Delete no more existing Meross devices and related entities """
     for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
@@ -204,6 +224,7 @@ def remove_entities(hass):
             _LOGGER.debug('Meross device ' + meross_device_name + ' is no more online and will be deleted')
             for entity_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_ENTITY_IDS]:
                 dispatcher_send(hass, SIGNAL_DELETE_ENTITY, entity_id)
+
 
 def thread_update_devices_list(hass, config):
 
@@ -274,8 +295,6 @@ def thread_update_devices_list(hass, config):
                     meross_device = hass.data[DOMAIN][MEROSS_HTTP_CLIENT].get_device(meross_device_info)
                     hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE] = meross_device
 
-        # await async_update_devices_status()
-
         for ha_type, meross_device_ids in meross_device_ids_by_type.items():
             hass.async_create_task(discovery.async_load_platform(hass, ha_type, DOMAIN,
                                                                  {'meross_device_ids': meross_device_ids}, config))
@@ -300,10 +319,12 @@ async def async_update_device_list(hass, config):
     hass.data[DOMAIN][MEROSS_LOAD_DEVICES_THREAD] = threading.Thread(target=thread_update_devices_list, args=[hass, config])
     hass.data[DOMAIN][MEROSS_LOAD_DEVICES_THREAD].start()
 
+
 async def async_update_devices_status(hass, config):
     _LOGGER.debug('async_update_devices_status()')
     hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_THREAD] = threading.Thread(target=thread_update_devices_status, args=[hass, config])
     hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_THREAD].start()
+
 
 async def async_setup(hass, config):
 
@@ -319,15 +340,24 @@ async def async_setup(hass, config):
     hass.data[DOMAIN] = {
         MEROSS_HTTP_CLIENT: HomeAssistantMerossHttpClient(email=username, password=password),
         MEROSS_DEVICES_BY_ID: {},
+        UPDATE_MEROSS_DEVICES_LIST_FLAG: False,
+        UPDATE_MEROSS_DEVICES_STATUS_FLAG: False,
     }
 
     """ Called at the very beginning and periodically, each meross_devices_scan_interval seconds """
     async def async_periodic_update_device_list(event_time):
-        hass.async_create_task(async_update_device_list(hass, config))
+        if hass.data[DOMAIN][UPDATE_MEROSS_DEVICES_LIST_FLAG]:
+            _LOGGER.warning('UPDATE_MEROSS_DEVICES_LIST_FLAG is true, probably the Meross main loop is stucked')
+        else:
+            hass.data[DOMAIN][UPDATE_MEROSS_DEVICES_LIST_FLAG] = True
+        pass
 
     """ Called at the very beginning and periodically, each scan_interval seconds """
     async def async_periodic_update_devices_status(event_time):
-        hass.async_create_task(async_update_devices_status(hass, config))
+        if hass.data[DOMAIN][UPDATE_MEROSS_DEVICES_STATUS_FLAG]:
+            _LOGGER.warning('UPDATE_MEROSS_DEVICES_STATUS_FLAG is true, probably the Meross main loop is stucked')
+        else:
+            hass.data[DOMAIN][UPDATE_MEROSS_DEVICES_STATUS_FLAG] = True
 
     """ This is used to update the Meross Device list periodically """
     _LOGGER.debug('registering async_periodic_update_device_list() each ' + str(meross_devices_scan_interval))
@@ -338,7 +368,9 @@ async def async_setup(hass, config):
     async_track_time_interval(hass, async_periodic_update_devices_status, scan_interval)
 
     """ Schedule to load the Meross device list, for the first rime"""
-    hass.async_create_task(async_update_device_list(hass, config))
+    hass.data[DOMAIN][UPDATE_MEROSS_DEVICES_LIST_FLAG] = True
+    hass.data[DOMAIN][MEROSS_MAIN_LOOP_THREAD] = threading.Thread(target=thread_main_loop, args=[hass, config])
+    hass.data[DOMAIN][MEROSS_MAIN_LOOP_THREAD].start()
 
     """ Register it as a service """
     """ Ref: https://developers.home-assistant.io/docs/en/dev_101_services.html"""
