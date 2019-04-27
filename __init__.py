@@ -45,6 +45,7 @@ MEROSS_LAST_DISCOVERED_DEVICE_IDS = 'last_discovered_device_ids'
 MEROSS_MAIN_LOOP_THREAD = 'main_loop_thread'
 UPDATE_MEROSS_DEVICES_LIST_FLAG = 'update_devices_list'
 UPDATE_MEROSS_DEVICES_STATUS_FLAG = 'update_devices_status'
+MEROSS_DEVICE_AVAILABLE = 'available'
 
 HA_SWITCH = 'switch'
 HA_SENSOR = 'sensor'
@@ -226,6 +227,17 @@ def remove_entities(hass):
                 dispatcher_send(hass, SIGNAL_DELETE_ENTITY, entity_id)
 
 
+def update_device_availability(hass):
+    """ Delete no more existing Meross devices and related entities """
+    for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
+        if meross_device_id not in hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS]:
+            meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
+            meross_device_name = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE_NAME]
+            _LOGGER.debug('Meross device ' + meross_device_name + ' is no more available')
+            hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE_AVAILABLE] = False
+        else:
+            hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE_AVAILABLE] = True
+
 def thread_update_devices_list(hass, config):
 
     _LOGGER.debug('thread_update_devices_list()')
@@ -261,6 +273,7 @@ def thread_update_devices_list(hass, config):
                         MEROSS_DEVICE: meross_device,
                         MEROSS_NUM_CHANNELS: num_channels,
                         MEROSS_DEVICE_NAME: meross_device_name,
+                        MEROSS_DEVICE_AVAILABLE: True,
                         HA_ENTITY_IDS: [],
                         HA_SWITCH: {},
                         HA_SENSOR: {},
@@ -309,7 +322,9 @@ def thread_update_devices_list(hass, config):
         _LOGGER.warning('ConnectionError when executing supported_devices_info_by_id() >>> check internet connection')
         pass
 
-    remove_entities(hass)
+    #remove_entities(hass)
+
+    update_device_availability(hass)
 
     pass
 

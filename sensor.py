@@ -3,7 +3,8 @@ import logging
 from datetime import timedelta
 from homeassistant.components.sensor import (DOMAIN, ENTITY_ID_FORMAT)
 
-from custom_components.meross import (DOMAIN, MEROSS_DEVICE, MEROSS_DEVICES_BY_ID, HA_SENSOR, MerossEntity)
+from custom_components.meross import (DOMAIN, MEROSS_DEVICE, MEROSS_DEVICES_BY_ID, HA_SENSOR, MEROSS_DEVICE_AVAILABLE,
+                                      MerossEntity)
 
 """ Is it necessary??? """
 SCAN_INTERVAL = timedelta(seconds=10)
@@ -55,9 +56,10 @@ class MerossSensorEntity(MerossEntity):
         """ update is done in the update function"""
         self._available = False
         if self._meross_device_id in self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
-            self._available = True
+            meross_device_dict = self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self._meross_device_id]
+            self._available = meross_device_dict[MEROSS_DEVICE_AVAILABLE]
             f = MEROSS_SENSORS_MAP[self._sensor_name]['factor']
-            self._value = self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self._meross_device_id][HA_SENSOR][self._sensor_name]*f
+            self._value = meross_device_dict[HA_SENSOR][self._sensor_name]*f
 
     @property
     def unit_of_measurement(self):

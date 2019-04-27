@@ -2,7 +2,8 @@ import logging
 
 from datetime import timedelta
 from homeassistant.components.switch import ENTITY_ID_FORMAT, SwitchDevice
-from custom_components.meross import (DOMAIN as DOMAIN, MEROSS_DEVICES_BY_ID, MEROSS_DEVICE, HA_SWITCH, MerossEntity)
+from custom_components.meross import (DOMAIN as DOMAIN, MEROSS_DEVICES_BY_ID, MEROSS_DEVICE, HA_SWITCH,
+                                      MEROSS_DEVICE_AVAILABLE, MerossEntity)
 
 """ Is it necessary??? """
 SCAN_INTERVAL = timedelta(seconds=10)
@@ -83,9 +84,10 @@ class MerossSwitchEntity(MerossEntity, SwitchDevice):
         """ update is done in the update function"""
         self._available = False
         if self._meross_device_id in self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
-            if self._switch_channel in self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self._meross_device_id][HA_SWITCH]:
-                self._is_on = self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self._meross_device_id][HA_SWITCH][self._switch_channel]
-                self._available = True
+            meross_device_dict = self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self._meross_device_id]
+            if self._switch_channel in meross_device_dict[HA_SWITCH]:
+                self._is_on = meross_device_dict[HA_SWITCH][self._switch_channel]
+                self._available = meross_device_dict[MEROSS_DEVICE_AVAILABLE]
 
     """ Ref: https://developers.home-assistant.io/docs/en/entity_index.html """
 
