@@ -16,10 +16,7 @@ from homeassistant.helpers.event import async_track_time_interval
 """Import MerossHttpClient from Meross.iot.api library"""
 from meross_iot.api import MerossHttpClient
 from meross_iot.api import UnauthorizedException
-from meross_iot.supported_devices.power_plugs import GenericPlug
-from meross_iot.supported_devices.client_status import ClientStatus
-from meross_iot.supported_devices.exceptions.CommandTimeoutException import CommandTimeoutException
-from meross_iot.supported_devices.exceptions.StatusTimeoutException import StatusTimeoutException
+
 #from meross_iot.supported_devices.exceptions.ConnectionDroppedException import ConnectionDroppedException
 
 """ Setting log """
