@@ -20,7 +20,7 @@ from meross_iot.supported_devices.power_plugs import GenericPlug
 from meross_iot.supported_devices.client_status import ClientStatus
 from meross_iot.supported_devices.exceptions.CommandTimeoutException import CommandTimeoutException
 from meross_iot.supported_devices.exceptions.StatusTimeoutException import StatusTimeoutException
-from meross_iot.supported_devices.exceptions.ConnectionDroppedException import ConnectionDroppedException
+#from meross_iot.supported_devices.exceptions.ConnectionDroppedException import ConnectionDroppedException
 
 """ Setting log """
 _LOGGER = logging.getLogger('meross_init')
@@ -207,12 +207,13 @@ def thread_update_devices_status(hass, config):
             # update device status
             update_device_status_by_id(hass, meross_device_id)
         else:
+            hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE_AVAILABLE] = False
             num_inactive_devices += 1
 
     if num_inactive_devices > 0:
         # Some previously discovered devices are no more active: it means that the Meross Device object has been
         # disconnected. Let's check again their availability and try to rebuild
-        hass.async_create_task(async_update_device_list(hass, config))
+        hass.data[DOMAIN][UPDATE_MEROSS_DEVICES_LIST_FLAG] = True
     pass
 
 
@@ -231,7 +232,6 @@ def update_device_availability(hass):
     """ Delete no more existing Meross devices and related entities """
     for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
         if meross_device_id not in hass.data[DOMAIN][MEROSS_LAST_DISCOVERED_DEVICE_IDS]:
-            meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
             meross_device_name = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE_NAME]
             _LOGGER.debug('Meross device ' + meross_device_name + ' is no more available')
             hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE_AVAILABLE] = False
@@ -327,18 +327,6 @@ def thread_update_devices_list(hass, config):
     update_device_availability(hass)
 
     pass
-
-
-async def async_update_device_list(hass, config):
-    _LOGGER.debug('async_update_device_list()')
-    hass.data[DOMAIN][MEROSS_LOAD_DEVICES_THREAD] = threading.Thread(target=thread_update_devices_list, args=[hass, config])
-    hass.data[DOMAIN][MEROSS_LOAD_DEVICES_THREAD].start()
-
-
-async def async_update_devices_status(hass, config):
-    _LOGGER.debug('async_update_devices_status()')
-    hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_THREAD] = threading.Thread(target=thread_update_devices_status, args=[hass, config])
-    hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_THREAD].start()
 
 
 async def async_setup(hass, config):
