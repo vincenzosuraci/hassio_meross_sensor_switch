@@ -46,6 +46,7 @@ MEROSS_MAIN_LOOP_FLAG = 'main_loop_flag'
 MEROSS_MAIN_LOOP_THREAD = 'main_loop_thread'
 MEROSS_UPDATE_DEVICES_LIST_FLAG = 'update_devices_list_flag'
 MEROSS_UPDATE_DEVICES_STATUS_FLAG = 'update_devices_status_flag'
+MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS = 'update_devices_status_dead_locks'
 MEROSS_DEVICE_AVAILABLE = 'device_available'
 
 HA_SWITCH = 'switch'
@@ -327,6 +328,7 @@ async def async_setup(hass, config):
     """ define it here to have access to hass object """
 
     def event_handler(eventobj):
+        _LOGGER.debug(str(eventobj.event_type) + " event detected")
         if eventobj.event_type == MerossEventType.CLIENT_CONNECTION:
             # Fired when the MQTT client connects/disconnects to the MQTT broker
             # do nothing...
@@ -368,6 +370,7 @@ async def async_setup(hass, config):
             MEROSS_UPDATE_DEVICES_LIST_FLAG: False,
             MEROSS_UPDATE_DEVICES_STATUS_FLAG: False,
             MEROSS_MAIN_LOOP_FLAG: True,
+            MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS: 0,
         }
 
         # Starts the manager
@@ -380,8 +383,10 @@ async def async_setup(hass, config):
         async def async_periodic_update_devices_status(event_time):
             if hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_FLAG]:
                 _LOGGER.warning('MEROSS_UPDATE_DEVICES_STATUS_FLAG is true, probably the Meross main loop is stucked')
+                hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS] += 1
             else:
                 hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_FLAG] = True
+                hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS] = 0
 
         """ Called at the very beginning and periodically, each scan_interval seconds """
         async def async_periodic_update_devices_list(event_time):
