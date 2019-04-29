@@ -356,6 +356,7 @@ async def async_setup(hass, config):
     username = config[DOMAIN][CONF_USERNAME]
     password = config[DOMAIN][CONF_PASSWORD]
     scan_interval = config[DOMAIN][CONF_SCAN_INTERVAL]
+    meross_devices_scan_interval = config[DOMAIN][CONF_MEROSS_DEVICES_SCAN_INTERVAL]
 
     try:
         # Creating Meross manager. It connects to the Meross Mqtt broker...
@@ -382,11 +383,22 @@ async def async_setup(hass, config):
             else:
                 hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_FLAG] = True
 
+        """ Called at the very beginning and periodically, each scan_interval seconds """
+        async def async_periodic_update_devices_list(event_time):
+            if hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_LIST_FLAG]:
+                _LOGGER.warning('MEROSS_UPDATE_DEVICES_LIST_FLAG is true, probably the Meross main loop is stucked')
+            else:
+                hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_LIST_FLAG] = True
+
         """ This is used to update the Meross Devices status periodically """
         _LOGGER.debug('registering async_periodic_update_devices_status() each ' + str(scan_interval))
         async_track_time_interval(hass, async_periodic_update_devices_status, scan_interval)
 
-        """ Schedule to load the Meross device list, for the first rime"""
+        """ This is used to update the Meross Devices list periodically """
+        _LOGGER.debug('registering async_periodic_update_devices_list() each ' + str(meross_devices_scan_interval))
+        async_track_time_interval(hass, async_periodic_update_devices_list, meross_devices_scan_interval)
+
+        """ Schedule to load the Meross device list, for the first time"""
         hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_LIST_FLAG] = True
         hass.data[DOMAIN][MEROSS_MAIN_LOOP_THREAD] = threading.Thread(target=thread_main_loop, args=[hass, config])
         hass.data[DOMAIN][MEROSS_MAIN_LOOP_THREAD].start()
