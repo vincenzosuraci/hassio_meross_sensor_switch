@@ -47,6 +47,7 @@ MEROSS_MAIN_LOOP_THREAD = 'main_loop_thread'
 MEROSS_UPDATE_DEVICES_LIST_FLAG = 'update_devices_list_flag'
 MEROSS_UPDATE_DEVICES_STATUS_FLAG = 'update_devices_status_flag'
 MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS = 'update_devices_status_dead_locks'
+MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS_MAX = 10
 MEROSS_DEVICE_AVAILABLE = 'device_available'
 
 HA_SWITCH = 'switch'
@@ -153,10 +154,6 @@ def thread_update_devices_status(hass, config):
     for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
         # get the Meross Device object
         meross_device = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE]
-        # get the Meross Device name
-        meross_device_name = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE_NAME]
-        # debug
-        _LOGGER.debug('Device ' + meross_device_name + ': ' + str(meross_device.online))
         # check if the Meross Device object is active (i.e. still subscribed to the Meross Mqtt server)
         if meross_device.online:
             # update device status
@@ -325,9 +322,14 @@ async def async_setup(hass, config):
 
     _LOGGER.debug('async_setup() >>> STARTED')
 
-    """ define it here to have access to hass object """
+    """Get Meross Component configuration"""
+    username = config[DOMAIN][CONF_USERNAME]
+    password = config[DOMAIN][CONF_PASSWORD]
+    scan_interval = config[DOMAIN][CONF_SCAN_INTERVAL]
+    meross_devices_scan_interval = config[DOMAIN][CONF_MEROSS_DEVICES_SCAN_INTERVAL]
 
-    def event_handler(eventobj):
+    """ define it here to have access to hass object """
+    def meross_event_handler(eventobj):
         _LOGGER.debug(str(eventobj.event_type) + " event detected")
         if eventobj.event_type == MerossEventType.CLIENT_CONNECTION:
             # Fired when the MQTT client connects/disconnects to the MQTT broker
@@ -354,11 +356,16 @@ async def async_setup(hass, config):
             _LOGGER.warning(str(eventobj.event_type) + " is an unknown event!")
         pass
 
-    """Get Meross Component configuration"""
-    username = config[DOMAIN][CONF_USERNAME]
-    password = config[DOMAIN][CONF_PASSWORD]
-    scan_interval = config[DOMAIN][CONF_SCAN_INTERVAL]
-    meross_devices_scan_interval = config[DOMAIN][CONF_MEROSS_DEVICES_SCAN_INTERVAL]
+    def meross_reset():
+        _LOGGER.debug('reset() >>> Stopping Meross manager...')
+        hass.data[DOMAIN][MEROSS_MANAGER].stop()
+        _LOGGER.debug('reset() >>> Creating new Meross manager...')
+        hass.data[DOMAIN][MEROSS_MANAGER] = MerossManager(username, password)
+        _LOGGER.debug('reset() >>> Starting Meross manager...')
+        hass.data[DOMAIN][MEROSS_MANAGER].start()
+        _LOGGER.debug('reset() >>> Listening for meross_event_handler()...')
+        hass.data[DOMAIN][MEROSS_MANAGER].register_event_handler(meross_event_handler)
+        pass
 
     try:
         # Creating Meross manager. It connects to the Meross Mqtt broker...
@@ -377,13 +384,16 @@ async def async_setup(hass, config):
         hass.data[DOMAIN][MEROSS_MANAGER].start()
 
         # Register event handlers for the manager...
-        hass.data[DOMAIN][MEROSS_MANAGER].register_event_handler(event_handler)
+        hass.data[DOMAIN][MEROSS_MANAGER].register_event_handler(meross_event_handler)
 
         """ Called at the very beginning and periodically, each scan_interval seconds """
         async def async_periodic_update_devices_status(event_time):
             if hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_FLAG]:
                 _LOGGER.warning('MEROSS_UPDATE_DEVICES_STATUS_FLAG is true, probably the Meross main loop is stucked')
                 hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS] += 1
+                if hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS] > MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS_MAX:
+                    _LOGGER.warning('Resetting after ' + str(MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS_MAX) + ' dead locks')
+                    meross_reset()
             else:
                 hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_FLAG] = True
                 hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS] = 0
@@ -413,20 +423,6 @@ async def async_setup(hass, config):
         event_str = EVENT_HOMEASSISTANT_STOP
         _LOGGER.debug('registering stop_main_loop_thread(hass) when detecting ' + event_str + ' event')
         hass.bus.async_listen_once(event_str, stop_main_loop_thread(hass))
-
-        """ Register it as a service """
-        """ Ref: https://developers.home-assistant.io/docs/en/dev_101_services.html"""
-        """ Decided to disable it"""
-        #hass.services.register(DOMAIN, SERVICE_PULL_DEVICES, poll_devices_update)
-
-        #def force_update(call):
-        #    """Force all entities to pull data."""
-        #    dispatcher_send(hass, SIGNAL_UPDATE_ENTITY)
-
-        """ Register it as a service """
-        """ Ref: https://developers.home-assistant.io/docs/en/dev_101_services.html"""
-        """ Decided to disable it"""
-        #hass.services.register(DOMAIN, SERVICE_FORCE_UPDATE, force_update)
 
     except UnauthorizedException:
         handle_unauthorized_exception('MerossManager()')
