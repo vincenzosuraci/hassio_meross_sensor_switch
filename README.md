@@ -14,13 +14,14 @@ However, refer to [Alberto Geniola](https://github.com/albertogeniola/MerossIot)
 Install
 ============
 
-1. **Copy all the ".py" files into your "/config/custom_components/meross" folder.**
+1. **Copy all the ".py" and "manifest.json" files into your "/config/custom_components/meross" folder.**
 - Your configuration should look like:
 ```
 config
   custom_components
     meross
       __init__.py
+      manifest.json
       sensor.py
       switch.py
 ```
