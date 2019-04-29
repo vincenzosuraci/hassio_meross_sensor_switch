@@ -57,9 +57,9 @@ class MerossSensorEntity(MerossEntity):
         self._available = False
         if self._meross_device_id in self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
             meross_device_dict = self.hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][self._meross_device_id]
-            self._available = meross_device_dict[MEROSS_DEVICE_AVAILABLE]
             f = MEROSS_SENSORS_MAP[self._sensor_name]['factor']
             self._value = meross_device_dict[HA_SENSOR][self._sensor_name]*f
+            self._available = meross_device_dict[MEROSS_DEVICE_AVAILABLE]
 
     @property
     def unit_of_measurement(self):
