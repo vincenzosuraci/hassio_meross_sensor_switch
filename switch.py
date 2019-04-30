@@ -70,12 +70,12 @@ class MerossSwitchEntity(MerossEntity, SwitchDevice):
 
     async def async_turn_on(self):
         self._is_on = True
-        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> async_turn_on()')
+        _LOGGER.info(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> async_turn_on()')
         await self.async_execute_switch_and_set_status()
 
     async def async_turn_off(self):
         self._is_on = False
-        _LOGGER.debug(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> async_turn_off()')
+        _LOGGER.info(self._meross_device_name + ' >>> ' + self._meross_entity_name + ' >>> async_turn_off()')
         await self.async_execute_switch_and_set_status()
 
     """ OVERIDING """

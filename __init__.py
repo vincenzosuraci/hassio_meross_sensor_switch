@@ -28,6 +28,10 @@ from meross_iot.cloud.devices.power_plugs import GenericPlug
 _LOGGER = logging.getLogger('meross_init')
 _LOGGER.setLevel(logging.DEBUG)
 
+""" Setting log level for meross-iot library"""
+from meross_iot.logger import set_log_level
+set_log_level(root=logging.DEBUG, connection=logging.DEBUG, network=logging.WARNING)
+
 """ This is needed to ensure meross_iot library is always updated """
 """ Ref: https://developers.home-assistant.io/docs/en/creating_integration_manifest.html"""
 REQUIREMENTS = ['meross_iot==0.3.0.0b0']
@@ -63,7 +67,7 @@ SERVICE_PULL_DEVICES = 'pull_devices'
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
 
 CONF_MEROSS_DEVICES_SCAN_INTERVAL = 'meross_devices_scan_interval'
-DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL = timedelta(minutes=5)
+DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL = timedelta(minutes=15)
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
@@ -82,11 +86,11 @@ def thread_main_loop(hass, config):
     while hass.data[DOMAIN][MEROSS_MAIN_LOOP_FLAG]:
         if hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_LIST_FLAG]:
             hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_LIST_FLAG] = False
-            thread_update_devices_list(hass, config)
+            #update_devices_list(hass, config)
         if hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_FLAG]:
             start = time.time()
             hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_FLAG] = False
-            thread_update_devices_status(hass, config)
+            #update_devices_status(hass, config)
             duration_s = time.time() - start
             if duration_s >= scan_interval_s:
                 _LOGGER.warning('thread_update_devices_status() duration was ' + str(
@@ -107,7 +111,7 @@ def update_device_status_by_id(hass, meross_device_id):
     try:
         # get the num of channels (switches) associated to this device
         num_channels = hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_NUM_CHANNELS]
-        if (len(hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SWITCH]) == 0):
+        if len(hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][HA_SWITCH]) == 0:
             # for each channel (switch), update its status (on/off)
             for channel in range(0, num_channels):
                 try:
@@ -147,9 +151,9 @@ def update_device_status_by_id(hass, meross_device_id):
     pass
 
 
-def thread_update_devices_status(hass, config):
+def update_devices_status(hass, config):
     # debug
-    _LOGGER.debug('thread_update_devices_status()')
+    _LOGGER.info('Updating Meross devices status')
 
     for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID]:
         # get the Meross Device object
@@ -204,9 +208,9 @@ def handle_status_timeout_exception(caller):
     pass
 
 
-def thread_update_devices_list(hass, config):
+def update_devices_list(hass, config):
 
-    _LOGGER.debug('thread_update_devices_list()')
+    _LOGGER.info('Updating Meross devices list')
 
     """ Load the updated list of Meross devices """
     meross_device_ids_by_type = {}
@@ -216,7 +220,7 @@ def thread_update_devices_list(hass, config):
         # WARNING: blocking function >>> Exceptions may occur
         _LOGGER.debug('get_devices_by_kind(GenericPlug) >>> BLOCKING')
         meross_plugs = hass.data[DOMAIN][MEROSS_MANAGER].get_devices_by_kind(GenericPlug)
-        _LOGGER.debug(str(len(meross_plugs)) + ' plugs found')
+        _LOGGER.info(str(len(meross_plugs)) + ' plugs found')
         for meross_plug in meross_plugs:
 
             """ Meross device id === uuid """
@@ -236,7 +240,7 @@ def thread_update_devices_list(hass, config):
 
                 """ New device found """
                 meross_device_name = meross_device.name
-                _LOGGER.debug('New Meross device created: ' + meross_device_name)
+                _LOGGER.info('New Meross device created: ' + meross_device_name)
 
                 """ Check if the device is available """
                 meross_device_available = meross_device.online
@@ -365,6 +369,16 @@ async def async_setup(hass, config):
         hass.data[DOMAIN][MEROSS_MANAGER].start()
         _LOGGER.debug('reset() >>> Listening for meross_event_handler()...')
         hass.data[DOMAIN][MEROSS_MANAGER].register_event_handler(meross_event_handler)
+        _LOGGER.debug('reset() >>> Resetting the dead locks counter')
+        hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS] = 0
+        _LOGGER.debug('reset() >>> Resetting the devices')
+        for meross_device_id in hass.data[DOMAIN][MEROSS_DEVICES_BY_ID].keys():
+            meross_device = hass.data[DOMAIN][MEROSS_MANAGER].get_device_by_uuid(meross_device_id)
+            hass.data[DOMAIN][MEROSS_DEVICES_BY_ID][meross_device_id][MEROSS_DEVICE] = meross_device
+        """ Schedule to load the Meross device list, for the first time"""
+        hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_LIST_FLAG] = True
+        hass.data[DOMAIN][MEROSS_MAIN_LOOP_THREAD] = threading.Thread(target=thread_main_loop, args=[hass, config])
+        hass.data[DOMAIN][MEROSS_MAIN_LOOP_THREAD].start()
         pass
 
     try:
@@ -389,10 +403,14 @@ async def async_setup(hass, config):
         """ Called at the very beginning and periodically, each scan_interval seconds """
         async def async_periodic_update_devices_status(event_time):
             if hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_FLAG]:
-                _LOGGER.warning('MEROSS_UPDATE_DEVICES_STATUS_FLAG is true, probably the Meross main loop is stucked')
                 hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS] += 1
-                if hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS] > MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS_MAX:
-                    _LOGGER.warning('Resetting after ' + str(MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS_MAX) + ' dead locks')
+                dl = hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS]
+                dl_max = MEROSS_UPDATE_DEVICES_STATUS_DEAD_LOCKS_MAX
+                _LOGGER.warning(
+                    'MEROSS_UPDATE_DEVICES_STATUS_FLAG is true, probably the Meross main loop is stucked (' + str(
+                        dl) + '/' + str(dl_max) + ')')
+                if dl > dl_max:
+                    _LOGGER.warning('Resetting after ' + str(dl_max) + ' dead locks')
                     meross_reset()
             else:
                 hass.data[DOMAIN][MEROSS_UPDATE_DEVICES_STATUS_FLAG] = True
