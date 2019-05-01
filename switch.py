@@ -61,7 +61,6 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
 
 class MerossSwitchEntity(MerossEntity, SwitchDevice):
-    """meross Switch Device."""
 
     def __init__(self, hass, meross_device_uuid, meross_device_name, meross_switch_channel, suffix):
 
@@ -105,7 +104,6 @@ class MerossSwitchEntity(MerossEntity, SwitchDevice):
             meross_plug.switch_states[self._meross_switch_channel]['available'] = False
             return False
         else:
-            meross_plug.switch_states[self._meross_switch_channel]['available'] = True
             if self._is_on:
                 meross_device.turn_on_channel(self._meross_switch_channel)
             else:
@@ -117,18 +115,24 @@ class MerossSwitchEntity(MerossEntity, SwitchDevice):
         self._is_on = True
         _LOGGER.info(self._meross_device_name + ' >>> ' +
                      self._meross_entity_name + ' >>> async_turn_on()')
-        return await self.async_execute_switch_and_set_status()
+        return self.hass.async_add_job(self.async_execute_switch_and_set_status)
 
     async def async_turn_off(self):
         self._is_on = False
         _LOGGER.info(self._meross_device_name + ' >>> ' +
                      self._meross_entity_name + ' >>> async_turn_off()')
-        return await self.async_execute_switch_and_set_status()
+        return self.hass.async_add_job(self.async_execute_switch_and_set_status)
 
     async def async_update(self):
         _LOGGER.debug(self._meross_device_name + ' >>> ' +
                       self._meross_entity_name + ' >>> async_update()')
-        self._is_on = self._meross_plug.switch_states[self._meross_switch_channel]['is_on']
+        updated_is_on = self._meross_plug.switch_states[self._meross_switch_channel]['is_on']
+        if updated_is_on != self._is_on:
+            _LOGGER.info(self._meross_device_name + ' >>> ' +
+                         self._meross_entity_name + ' >>> switching from ' +
+                         str(self._is_on) + ' to ' +
+                         str(updated_is_on))
+        self._is_on = updated_is_on
         self._available = self._meross_plug.switch_states[self._meross_switch_channel]['available']
         return True
 
@@ -142,7 +146,7 @@ class MerossSwitchEntity(MerossEntity, SwitchDevice):
 
     @property
     def is_on(self):
-        _LOGGER.info(self._meross_device_name+' >>> ' +
+        _LOGGER.debug(self._meross_device_name+' >>> ' +
                       self._meross_device_name + ' >>> is_on() >>> ' +
                       str(self._is_on))
         return self._is_on

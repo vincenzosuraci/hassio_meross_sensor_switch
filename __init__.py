@@ -2,6 +2,8 @@ import inspect
 from datetime import timedelta
 import logging
 import voluptuous as vol
+import time
+import datetime
 
 from meross_iot.cloud.exceptions import CommandTimeoutException, StatusTimeoutException
 from requests.exceptions import ConnectionError
@@ -67,12 +69,12 @@ CONFIG_SCHEMA = vol.Schema({
 
 async def async_setup(hass, config):
 
-    _LOGGER.info('async_setup() >>> STARTED')
+    _LOGGER.debug('async_setup() >>> STARTED')
 
     # create the MerossManager object
     hass.data[DOMAIN] = MerossPlatform(hass, config)
 
-    _LOGGER.info('async_setup() <<< TERMINATED')
+    _LOGGER.debug('async_setup() <<< TERMINATED')
 
     return True
 
@@ -213,13 +215,13 @@ class MerossPlatform:
     async def async_start_timer(self):
 
         # This is used to update the Meross Devices status periodically
-        _LOGGER.info('execute async_update_plugs() each ' + str(self.update_status_interval))
+        _LOGGER.info('Meross devices status will be updated each ' + str(self.update_status_interval))
         async_track_time_interval(self._hass,
                                   self.async_update_plugs,
                                   self.update_status_interval)
 
         # This is used to discover new Meross Devices periodically
-        _LOGGER.info('execute async_discover_plugs() each ' + str(self.discover_plugs_interval))
+        _LOGGER.info('Meross devices list will be updated each ' + str(self.discover_plugs_interval))
         async_track_time_interval(self._hass,
                                   self.async_discover_plugs,
                                   self.discover_plugs_interval)
@@ -228,21 +230,31 @@ class MerossPlatform:
 
     async def async_update_plugs(self, now=None):
 
-        _LOGGER.info('async_update_plugs() >>> STARTED at ' + str(now))
+        # monitor the duration in millis
+        # registering starting timestamp in ms
+        start_ms = int(round(time.time() * 1000))
+
+        _LOGGER.debug('async_update_plugs() >>> STARTED at ' + str(now))
 
         for meross_device_uuid, meross_plug in self.meross_plugs_by_uuid.items():
-            _LOGGER.info(meross_plug.name + ' plug status update >>> STARTED')
+            _LOGGER.debug(meross_plug.name + ' plug status update >>> STARTED')
             await meross_plug.async_update_status()
+            _LOGGER.debug(meross_plug.name + ' plug status update <<< TERMINATED')
+        _LOGGER.debug('async_update_plugs() <<< TERMINATED')
 
-            _LOGGER.info(meross_plug.name + ' plug status update <<< TERMINATED')
-
-        _LOGGER.info('async_update_plugs() <<< TERMINATED')
-
+        # registering ending timestamp in ms
+        end_ms = int(round(time.time() * 1000))
+        duration_ms = end_ms - start_ms
+        duration_s = int(round(duration_ms / 1000))
+        duration_td = datetime.timedelta(seconds=duration_s)
+        if duration_td > self.update_status_interval:
+            _LOGGER.warning('Updating the Meross plug status took ' + str(duration_td))
+        
         return True
 
     async def async_discover_plugs(self, now=None):
 
-        _LOGGER.info('async_discover_plugs >>> STARTED at ' + str(now))
+        _LOGGER.debug('async_discover_plugs >>> STARTED at ' + str(now))
 
         # get all the registered meross_plugs
         meross_plugs = self._meross_manager.get_devices_by_kind(GenericPlug)
@@ -258,7 +270,7 @@ class MerossPlatform:
                 self.meross_plugs_by_uuid[meross_plug_uuid] = MerossPlug(self._hass,
                                                                          self._config,
                                                                          meross_plug)
-        _LOGGER.info('async_discover_plugs <<< FINISHED')
+        _LOGGER.debug('async_discover_plugs <<< FINISHED')
 
         return True
 
@@ -281,8 +293,8 @@ class MerossPlatform:
                 self._hass.async_create_task(self.async_discover_plugs())
             pass
         elif eventobj.event_type == MerossEventType.DEVICE_SWITCH_STATUS:
-            _LOGGER.info("Switch state changed: Device %s (channel %d) went %s"
-                          % (eventobj.device.name, eventobj.channel_id, eventobj.switch_state))
+            _LOGGER.info("Switch state changed: Device %s (channel %d) went %s" %
+                         (eventobj.device.name, eventobj.channel_id, eventobj.switch_state))
             meross_device_uuid = eventobj.device.uuid
             channel = eventobj.channel_id
             channel_status = eventobj.switch_state

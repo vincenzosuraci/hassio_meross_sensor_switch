@@ -74,7 +74,8 @@ class MerossSensorEntity(MerossEntity):
         # naming
         meross_sensor_id = "{}_{}_{}".format(DOMAIN, meross_device_uuid, MEROSS_SENSORS_MAP[meross_sensor_name]['eid'])
         meross_entity_id = ENTITY_ID_FORMAT.format(meross_sensor_id)
-        _LOGGER.debug(meross_device_name + ' >>> ' + meross_sensor_name + ' >>> __init__()')
+        _LOGGER.debug(meross_device_name + ' >>> ' +
+                      meross_sensor_name + ' >>> __init__()')
 
         # init MerossEntity
         super().__init__(hass,
