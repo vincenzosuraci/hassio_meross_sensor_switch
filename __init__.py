@@ -99,31 +99,45 @@ class MerossPlug:
         self.device = meross_device
         self.uuid = meross_device.uuid
         self.name = meross_device.name
+        self.was_available = meross_device.online
 
-        # async register sensors
+        # async register sensors & switches
         self.sensor_states = {}
-        hass.async_create_task(
-            discovery.async_load_platform(hass,
+        self.switch_states = {}
+        self.sensor_switch_added = False
+        if self.was_available:
+            self.add_sensor_and_switches()
+        else:
+            _LOGGER.info(self.name + ' is offline >>> no sensor or switch added')
+
+    def add_sensor_and_switches(self):
+        self._hass.async_create_task(
+            discovery.async_load_platform(self._hass,
                                           HA_SENSOR,
                                           DOMAIN,
                                           {'meross_device_uuid': self.uuid},
-                                          config))
-
-        # async register switches
-        self.switch_states = {}
-        hass.async_create_task(
-            discovery.async_load_platform(hass,
-                                          HA_SWITCH, DOMAIN,
+                                          self._config))
+        self._hass.async_create_task(
+            discovery.async_load_platform(self._hass,
+                                          HA_SWITCH,
+                                          DOMAIN,
                                           {'meross_device_uuid': self.uuid},
-                                          config))
-
-        pass
+                                          self._config))
+        self.sensor_switch_added = True
 
     @property
     def available(self):
         return self.device.online
 
     def set_availability(self, available):
+        if self.was_available != available:
+            self.was_available = available
+            if available:
+                _LOGGER.info(self.name + ' is online')
+                if not self.sensor_switch_added:
+                    self.add_sensor_and_switches()
+            else:
+                _LOGGER.info(self.name + ' is offline')
         for name, sensor in self.sensor_states.items():
             sensor['available'] = available
         for channel, switch in self.switch_states.items():
