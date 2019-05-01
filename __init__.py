@@ -5,7 +5,8 @@ import voluptuous as vol
 import time
 import datetime
 
-from meross_iot.cloud.exceptions import CommandTimeoutException, StatusTimeoutException
+from meross_iot.cloud.exceptions.CommandTimeoutException import CommandTimeoutException
+from meross_iot.cloud.exceptions.StatusTimeoutException import StatusTimeoutException
 from requests.exceptions import ConnectionError
 
 from homeassistant.core import callback
@@ -249,7 +250,7 @@ class MerossPlatform:
         duration_td = datetime.timedelta(seconds=duration_s)
         if duration_td > self.update_status_interval:
             _LOGGER.warning('Updating the Meross plug status took ' + str(duration_td))
-        
+
         return True
 
     async def async_discover_plugs(self, now=None):
