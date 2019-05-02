@@ -62,5 +62,4 @@ logger:
     meross_sensor: DEBUG
     meross_switch: DEBUG
     meross_init: DEBUG
-    meross_powerplug: DEBUG
 ```
