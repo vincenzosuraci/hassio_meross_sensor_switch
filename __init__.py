@@ -48,7 +48,7 @@ SIGNAL_UPDATE_ENTITY = 'meross_update'
 DEFAULT_SCAN_INTERVAL = timedelta(seconds=10)
 
 CONF_MEROSS_DEVICES_SCAN_INTERVAL = 'meross_devices_scan_interval'
-DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL = timedelta(minutes=5)
+DEFAULT_MEROSS_DEVICES_SCAN_INTERVAL = timedelta(minutes=15)
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
