@@ -1,7 +1,7 @@
 # hassio_meross_sensor_switch
-- A Home Assistant custom-component for Meross devices, based 
+- A Home Assistant (HA) custom-component for Meross devices, based 
 on the work done by [Alberto Geniola](https://github.com/albertogeniola/MerossIot) and [Chris Hurst](https://github.com/hurstc/hassio-meross)
-- This custom-component adds the switch and sensor capabilities of your Meross device in Home Assistant
+- This custom-component adds the switch and sensor capabilities of your Meross device in HA
 
 Devices
 ============
@@ -17,7 +17,7 @@ The custom-component has been tested with [mss310](https://www.meross.com/produc
 However, refer to [Alberto Geniola](https://github.com/albertogeniola/MerossIot) for the full compatibility list.
 
 The custom-component will discover the Meross devices associated to your Meross account and will add switches and 
-sensors (measuring the electricity: power, voltage and current) in Home Assistant as shown below:
+sensors (measuring the electricity: power, voltage and current) in HA as shown below:
 
 - Example of switches (labels are in Italian):<br/>
 <img src="res/switches.png" alt="Switches" />
@@ -58,9 +58,9 @@ Configuration
 ============
 
 **Add your credentials to configuration.yaml**
-- **username** and **password** are **mandatory**
-- **scan_interval** is **optional**. It must be a positive integer number. It represents the seconds between two consecutive scans to gather new values of Meross devices' sensors and switches. 
-- **meross_devices_scan_interval** is **optional**. It must be a positive integer number. It represents the seconds between two consecutive scans to update the list of available Meross devices. 
+- `username` and `password` are **mandatory**
+- `scan_interval` is **optional**. It must be a positive integer number. It represents the seconds between two consecutive scans to gather new values of Meross devices' sensors and switches. 
+- `meross_devices_scan_interval` is **optional**. It must be a positive integer number. It represents the seconds between two consecutive scans to update the list of available Meross devices. 
 ```
 meross:
   username: !secret meross_userame
@@ -68,6 +68,20 @@ meross:
   scan_interval: 10
   meross_devices_scan_interval: 300
 ```
+
+Performances
+============
+Consider that the custom-component works using a **polling strategy**: it is a time-driven not an event-driven system. 
+It means that there will be always a **small delay** between an action and the result of that action.
+
+In particular:
+- acting a on/off switch on HA should result an (almost) instantaneous effect on the device and the Meross mobile App;
+- acting a on/off switch on the Meross mobile App, should result an (almost) instantaneous effect on the device, but you have to wait up to `scan_interval` seconds before it updates on HA;
+- electricity values (power, voltage, currant) are updated approx each `scan_interval` seconds before it updates on HA;
+- unplugging a device will be detected after several `scan_interval` cycles (normally less than a minute);
+- plugging in a device will be detected within `scan_interval` seconds;
+- registering a new device (to the associated Meross account) will be detected within `meross_devices_scan_interval` seconds;
+- unregistering a device (from the associated Meross account) will be detected after a HA reboot.
 
 Debug
 ============
