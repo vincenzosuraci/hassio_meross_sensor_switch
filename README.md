@@ -1,7 +1,13 @@
 # hassio_meross_sensor_switch
 - A Home Assistant (HA) custom-component for Meross devices, based 
 on the work done by [Alberto Geniola](https://github.com/albertogeniola/MerossIot) and [Chris Hurst](https://github.com/hurstc/hassio-meross)
-- This custom-component adds the switch and sensor capabilities of your Meross device in HA
+- This custom-component adds the switch and sensor capabilities of your Meross device in HA as shown below:
+
+- Example of switches (labels are in Italian):<br/>
+<img src="res/switches.png" alt="Switches" />
+
+- Example of electricity sensors (labels are in Italian):<br/>
+<img src="res/sensors.png" alt="Sensors" />
 
 Devices
 ============
@@ -17,13 +23,7 @@ The custom-component has been tested with [mss310](https://www.meross.com/produc
 However, refer to [Alberto Geniola](https://github.com/albertogeniola/MerossIot) for the full compatibility list.
 
 The custom-component will discover the Meross devices associated to your Meross account and will add switches and 
-sensors (measuring the electricity: power, voltage and current) in HA as shown below:
-
-- Example of switches (labels are in Italian):<br/>
-<img src="res/switches.png" alt="Switches" />
-
-- Example of electricity sensors (labels are in Italian):<br/>
-<img src="res/sensors.png" alt="Sensors" />
+sensors (measuring the electricity: power, voltage and current) in HA.
   
 
 Install
