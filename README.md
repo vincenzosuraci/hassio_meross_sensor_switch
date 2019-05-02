@@ -29,23 +29,23 @@ sensors (measuring the electricity: power, voltage and current) in HA as shown b
 Install
 ============
 
-1. Copy all the ".py" and "manifest.json" files into your "/config/custom_components/meross" folder.
+1. Copy all the `.py` and `manifest.json` files into your `/config/custom_components/meross` folder.
 - Your configuration should look like:
 ```
 config
-  custom_components
-    meross
-      __init__.py
-      manifest.json
-      sensor.py
-      switch.py
+└── custom_components
+    └── meross
+        └── __init__.py
+        └── manifest.json
+        └── switch.py
+        └── sensor.py
 ```
 
-2. **Remember to reboot Hassio (or Home Assistant)**
+2. Remember to **reboot** Hassio (or Home Assistant)
 
 Dependencies
 ============
-**This custom-component relies on the python meross_iot library developed by [Alberto Geniola](https://github.com/albertogeniola/MerossIot).**
+This custom-component relies on the python meross_iot library developed by [Alberto Geniola](https://github.com/albertogeniola/MerossIot).
 - On [Hassio](https://www.home-assistant.io/hassio/) (i.e., Home Assistant for Raspberry pi) the 
 [meross_iot](https://github.com/albertogeniola/MerossIot) framework will be downloaded automatically;
 - Note that if you forgot to copy the manifest.json, Hassio will not be able to download automatically its dependencies
