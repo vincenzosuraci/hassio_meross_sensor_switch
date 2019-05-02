@@ -6,14 +6,22 @@ on the work done by [Alberto Geniola](https://github.com/albertogeniola/MerossIo
 Devices
 ============
 
-The custom-component is intended to manage the Meross smart outlets. No other types of devices (e.g. bulbs, garage door opener, etc.) are supported. 
+The custom-component is intended to manage the [Meross smart outlets](https://www.meross.com/product?category_id=4). 
+Other types of devices (e.g. 
+[bulbs](https://www.meross.com/product?category_id=5), 
+[garage door opener](https://www.meross.com/product?category_id=8), etc.) 
+**are not currently supported**. 
 
-Tested only with my [mss310](https://www.meross.com/product/6/article/) and 
+The custom-component has been tested with [mss310](https://www.meross.com/product/6/article/) and 
 [mss210](https://www.meross.com/product/3/article/) version 2.0.0 smart outlets.
 However, refer to [Alberto Geniola](https://github.com/albertogeniola/MerossIot) for the full compatibility list.
 
-The custom-component will discover the Meross devices associated to your Meross account and will add switches and sensors (measuring the electricity: power, voltage and current) in Home Assistant.
+The custom-component will discover the Meross devices associated to your Meross account and will add switches and 
+sensors (measuring the electricity: power, voltage and current) in Home Assistant as shown below:
 
+<img src="res/switches.png" alt="Switches" width="400" />
+
+<img src="res/sensors.png" alt="Sensors" width="400" />
   
 
 Install
