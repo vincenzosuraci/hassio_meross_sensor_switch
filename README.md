@@ -48,7 +48,7 @@ Dependencies
 This custom-component relies on the python meross_iot library developed by [Alberto Geniola](https://github.com/albertogeniola/MerossIot).
 - On [Hassio](https://www.home-assistant.io/hassio/) (i.e., Home Assistant for Raspberry pi) the 
 [meross_iot](https://github.com/albertogeniola/MerossIot) framework will be downloaded automatically;
-- Note that if you forgot to copy the manifest.json, Hassio will not be able to download automatically its dependencies
+- Note that if you forgot to copy the `manifest.json`, Hassio will not be able to download automatically its dependencies
 - On other [Home Assistant](https://www.home-assistant.io/getting-started/) installations, if the dependencies fails to 
 be loaded, install it [manually](https://github.com/albertogeniola/MerossIot#installation). 
 
@@ -75,8 +75,8 @@ Consider that the custom-component works using a **polling strategy**: it is a t
 It means that there will be always a **small delay** between an action and the result of that action.
 
 In particular:
-- acting a on/off switch on HA should result an (almost) instantaneous effect on the device and the Meross mobile App;
-- acting a on/off switch on the Meross mobile App, should result an (almost) instantaneous effect on the device, but you have to wait up to `scan_interval` seconds before it updates on HA;
+- acting a on/off switch on HA should result in an (almost) instantaneous effect on the device and the Meross mobile App;
+- acting a on/off switch on the Meross mobile App, should result in an (almost) instantaneous effect on the device, but you have to wait up to `scan_interval` seconds before it updates on HA;
 - electricity values (power, voltage, currant) are updated approx each `scan_interval` seconds before it updates on HA;
 - unplugging a device will be detected after several `scan_interval` cycles (normally less than a minute);
 - plugging in a device will be detected within `scan_interval` seconds;
