@@ -12,8 +12,8 @@ SCAN_INTERVAL = timedelta(seconds=5)
 
 MEROSS_SENSORS_MAP = {
     'power':    {'eid': 'power',   'uom': 'W',  'icon': 'mdi:flash-outline', 'factor': 0.001,   'decimals': 2},
-    'current':  {'eid': 'current', 'uom': 'A',  'icon': 'mdi:current-ac',    'factor': 0.001,       'decimals': 2},
-    'voltage':  {'eid': 'voltage', 'uom': 'V',  'icon': 'mdi:power-plug',    'factor': 0.1,       'decimals': 2},
+    'current':  {'eid': 'current', 'uom': 'A',  'icon': 'mdi:current-ac',    'factor': 0.001,   'decimals': 2},
+    'voltage':  {'eid': 'voltage', 'uom': 'V',  'icon': 'mdi:power-plug',    'factor': 0.1,     'decimals': 2},
 }
 
 
@@ -88,7 +88,7 @@ class MerossSensorEntity(MerossEntity):
     async def async_update(self):
         _LOGGER.debug(self._meross_device_name + ' >>> ' +
                       self._meross_entity_name + ' >>> async_update()')
-        """ update is done in the update function"""
+        # update is done in the update function
         self._value = self._meross_plug.sensor_states[self._meross_sensor_name]['value']
         self._available = self._meross_plug.sensor_states[self._meross_sensor_name]['available']
         return True
@@ -99,7 +99,7 @@ class MerossSensorEntity(MerossEntity):
         _LOGGER.debug(self._meross_device_name + ' >>> ' +
                       self._meross_entity_name + ' >>> unit_of_measurement() >>> ' +
                       uom)
-        """Return the unit of measurement."""
+        # Return the unit of measurement.
         return uom
 
     @property
@@ -108,7 +108,7 @@ class MerossSensorEntity(MerossEntity):
         _LOGGER.debug(self._meross_device_name + ' >>> ' +
                       self._meross_entity_name + ' >>> icon() >>> ' +
                       str(icon))
-        """Return the icon."""
+        # Return the icon.
         return icon
 
     @property
