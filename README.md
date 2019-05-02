@@ -87,7 +87,7 @@ In particular:
 Debug
 ============
 
-- To enable debug diagnostics, add this to your configuration.yaml:
+- To enable debug diagnostics, add this to your `configuration.yaml`:
 ```
 logger:
   default: WARNING
