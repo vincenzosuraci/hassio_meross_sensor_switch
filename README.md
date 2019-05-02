@@ -22,7 +22,7 @@ sensors (measuring the electricity: power, voltage and current) in HA as shown b
 - Example of switches (labels are in Italian):<br/>
 <img src="res/switches.png" alt="Switches" />
 
-- Example of electricity sesnors (labels are in Italian):<br/>
+- Example of electricity sensors (labels are in Italian):<br/>
 <img src="res/sensors.png" alt="Sensors" />
   
 
