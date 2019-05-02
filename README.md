@@ -19,9 +19,11 @@ However, refer to [Alberto Geniola](https://github.com/albertogeniola/MerossIot)
 The custom-component will discover the Meross devices associated to your Meross account and will add switches and 
 sensors (measuring the electricity: power, voltage and current) in Home Assistant as shown below:
 
-<img src="res/switches.png" alt="Switches" width="400" />
+- Example of switches:<br/>
+<img src="res/switches.png" alt="Switches" />
 
-<img src="res/sensors.png" alt="Sensors" width="400" />
+- Example of electricity sesnors:<br/>
+<img src="res/sensors.png" alt="Sensors" />
   
 
 Install
