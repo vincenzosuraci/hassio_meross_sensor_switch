@@ -8,7 +8,7 @@ _LOGGER = logging.getLogger('meross_switch')
 _LOGGER.setLevel(logging.DEBUG)
 
 # define the HA scan for switch
-SCAN_INTERVAL = timedelta(seconds=5)
+SCAN_INTERVAL = timedelta(seconds=10)
 
 
 async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):

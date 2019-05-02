@@ -8,7 +8,7 @@ _LOGGER = logging.getLogger('meross_sensor')
 _LOGGER.setLevel(logging.DEBUG)
 
 # define the HA scan for sensor
-SCAN_INTERVAL = timedelta(seconds=5)
+SCAN_INTERVAL = timedelta(seconds=10)
 
 MEROSS_SENSORS_MAP = {
     'power':    {'eid': 'power',   'uom': 'W',  'icon': 'mdi:flash-outline', 'factor': 0.001,   'decimals': 2},
