@@ -61,6 +61,7 @@ Add your credentials to `configuration.yaml`:
 - `username` and `password` are **mandatory**
 - `scan_interval` is **optional**. It must be a positive integer number. It represents the seconds between two consecutive scans to gather new values of Meross devices' sensors and switches. The default value is 10 seconds. 
 - `meross_devices_scan_interval` is **optional**. It must be a positive integer number. It represents the seconds between two consecutive scans to update the list of available Meross devices. The default value is 900 seconds (15 minutes). 
+
 For example:
 ```
 meross:
