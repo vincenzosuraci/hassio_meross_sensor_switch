@@ -1,3 +1,6 @@
+# ATTENTION: This project is officially closed!
+Since this project was based on the work done by [Alberto Geniola](https://github.com/albertogeniola/MerossIot), since he has released a [homeassistant component](https://github.com/albertogeniola/meross-homeassistant), this project make no sense to be maintained. I suggest to move on that component.
+
 # hassio_meross_sensor_switch
 - A Home Assistant (HA) custom-component for Meross devices, based 
 on the work done by [Alberto Geniola](https://github.com/albertogeniola/MerossIot) and [Chris Hurst](https://github.com/hurstc/hassio-meross)
